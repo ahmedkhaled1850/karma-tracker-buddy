@@ -89,6 +89,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                       to="/"
                       onClick={() => {
                         try { localStorage.setItem("ktb_quick_rating", "good"); } catch {}
+                        try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "good" })); } catch {}
                       }}
                     >
                       <Button variant="ghost" className="w-full px-2 justify-center">
@@ -104,6 +105,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                 to="/"
                 onClick={() => {
                   try { localStorage.setItem("ktb_quick_rating", "good"); } catch {}
+                  try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "good" })); } catch {}
                 }}
               >
                 <Button variant="ghost" className="w-full justify-start gap-3">
@@ -124,6 +126,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                       to="/"
                       onClick={() => {
                         try { localStorage.setItem("ktb_quick_rating", "bad"); } catch {}
+                        try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "bad" })); } catch {}
                       }}
                     >
                       <Button variant="ghost" className="w-full px-2 justify-center">
@@ -139,6 +142,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                 to="/"
                 onClick={() => {
                   try { localStorage.setItem("ktb_quick_rating", "bad"); } catch {}
+                  try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "bad" })); } catch {}
                 }}
               >
                 <Button variant="ghost" className="w-full justify-start gap-3">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Plus, Trash2 } from "lucide-react";
@@ -13,6 +14,9 @@ interface GenesysTicket {
   ratingScore: number;
   customerPhone: string;
   ticketDate: string;
+  ticketId?: string;
+  channel?: "Phone" | "Chat" | "Email";
+  note?: string;
 }
 
 interface GenesysTicketFormProps {
@@ -27,6 +31,9 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
     ratingScore: 7,
     customerPhone: "",
     ticketDate: new Date().toISOString().split('T')[0],
+    ticketId: "",
+    channel: "Phone",
+    note: "",
   });
 
   const updateTicketInline = (id: string, field: keyof GenesysTicket, value: string | number) => {
@@ -52,6 +59,9 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
       ratingScore: 7,
       customerPhone: "",
       ticketDate: new Date().toISOString().split('T')[0],
+      ticketId: "",
+      channel: "Phone",
+      note: "",
     });
     setDialogOpen(false);
     toast.success("Genesys ticket added successfully!");
@@ -67,12 +77,12 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
           <Button className="w-full">
-            <Plus className="mr-2 h-4 w-4" /> Add Genesys Ticket
+            <Plus className="mr-2 h-4 w-4" /> Add Rating Ticket
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add Genesys Ticket</DialogTitle>
+            <DialogTitle>Add Rating Ticket</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -85,10 +95,10 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Genesys Ticket Link</label>
+              <label className="block text-sm font-medium mb-2">Ticket Link</label>
               <Input
                 type="url"
-                placeholder="https://..."
+                placeholder="https://... (optional)"
                 value={newTicket.ticketLink}
                 onChange={(e) => setNewTicket({ ...newTicket, ticketLink: e.target.value })}
               />
@@ -120,7 +130,7 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
             </div>
             
             <Button onClick={addTicket} className="w-full">
-              <Plus className="mr-2 h-4 w-4" /> Add Genesys Ticket
+              <Plus className="mr-2 h-4 w-4" /> Add Rating Ticket
             </Button>
           </div>
         </DialogContent>
@@ -130,7 +140,7 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
       {tickets.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Genesys Tickets Summary</CardTitle>
+            <CardTitle>good ticket summary</CardTitle>
           </CardHeader>
           <CardContent>
             {Object.entries(
@@ -194,7 +204,7 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div>
                                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Genesys Link</label>
                                   <Input
@@ -219,6 +229,40 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
                                     value={ticket.customerPhone}
                                     onChange={(e) => updateTicketInline(ticket.id!, "customerPhone", e.target.value)}
                                     placeholder="+1234567890"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Ticket ID</label>
+                                  <Input
+                                    value={ticket.ticketId || ""}
+                                    onChange={(e) => updateTicketInline(ticket.id!, "ticketId", e.target.value)}
+                                    placeholder="Enter ticket ID..."
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Channel</label>
+                                  <Select
+                                    value={(ticket.channel || "Phone")}
+                                    onValueChange={(value) => updateTicketInline(ticket.id!, "channel", value)}
+                                  >
+                                    <SelectTrigger className="bg-background h-9">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Phone">Phone 📞</SelectItem>
+                                      <SelectItem value="Chat">Chat 💬</SelectItem>
+                                      <SelectItem value="Email">Email 📧</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Note</label>
+                                  <Input
+                                    value={ticket.note || ""}
+                                    onChange={(e) => updateTicketInline(ticket.id!, "note", e.target.value)}
+                                    placeholder="Optional note..."
                                   />
                                 </div>
                               </div>

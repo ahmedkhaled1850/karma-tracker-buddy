@@ -96,7 +96,7 @@ export const TicketsTable = ({ tickets, onTicketsChange }: TicketsTableProps) =>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="p-0 hover:bg-transparent group">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 group-hover:text-primary transition-colors">
-                Negative Tickets Details
+                Negative Tickets (DSAT & Karma)
                 <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
               </h3>
             </Button>

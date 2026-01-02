@@ -17,34 +17,23 @@ interface ChannelAnalyticsProps {
 }
 
 export const ChannelAnalytics = ({ goodRatings, badRatings, karmaRatings, totalGood }: ChannelAnalyticsProps) => {
-  // Calculate actual channel distribution - unassigned ratings default to phone
-  const adjustedGoodRatings = useMemo(() => {
-    const assignedGood = goodRatings.phone + goodRatings.chat + goodRatings.email;
-    const unassignedGood = Math.max(0, totalGood - assignedGood);
-    
-    return {
-      phone: goodRatings.phone + unassignedGood, // Default unassigned to phone
-      chat: goodRatings.chat,
-      email: goodRatings.email,
-    };
-  }, [goodRatings, totalGood]);
 
   const chartData = [
     {
       channel: "Phone",
-      Good: adjustedGoodRatings.phone,
+      Good: goodRatings.phone,
       "DSAT": badRatings.phone,
       Karma: karmaRatings.phone,
     },
     {
       channel: "Chat",
-      Good: adjustedGoodRatings.chat,
+      Good: goodRatings.chat,
       "DSAT": badRatings.chat,
       Karma: karmaRatings.chat,
     },
     {
       channel: "Email",
-      Good: adjustedGoodRatings.email,
+      Good: goodRatings.email,
       "DSAT": badRatings.email,
       Karma: karmaRatings.email,
     },
@@ -63,7 +52,7 @@ export const ChannelAnalytics = ({ goodRatings, badRatings, karmaRatings, totalG
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {(["phone", "chat", "email"] as const).map((channel) => {
           const Icon = icons[channel];
-          const good = adjustedGoodRatings[channel];
+          const good = goodRatings[channel];
           const bad = badRatings[channel];
           const total = good + bad;
           const goodPercent = total > 0 ? ((good / total) * 100).toFixed(1) : "0";

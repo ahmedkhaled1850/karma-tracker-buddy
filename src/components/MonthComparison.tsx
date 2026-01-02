@@ -74,13 +74,15 @@ export const MonthComparison = ({
     current, 
     previous, 
     diff, 
-    isPercentage = false 
+    isPercentage = false,
+    invert = false
   }: { 
     label: string; 
     current: number; 
     previous: number; 
     diff: number; 
     isPercentage?: boolean;
+    invert?: boolean;
   }) => (
     <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
       <div className="flex-1">
@@ -95,7 +97,11 @@ export const MonthComparison = ({
           </span>
         </div>
       </div>
-      <div className={`flex items-center gap-1 ${diff > 0 ? 'text-success' : diff < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+      <div className={`flex items-center gap-1 ${
+        invert
+          ? (diff < 0 ? 'text-success' : diff > 0 ? 'text-destructive' : 'text-muted-foreground')
+          : (diff > 0 ? 'text-success' : diff < 0 ? 'text-destructive' : 'text-muted-foreground')
+      }`}>
         {diff > 0 ? <TrendingUp className="h-4 w-4" /> : diff < 0 ? <TrendingDown className="h-4 w-4" /> : null}
         <span className="text-sm font-medium">
           {diff > 0 ? '+' : ''}{isPercentage ? diff.toFixed(1) : diff}{isPercentage ? '%' : ''}
@@ -138,7 +144,8 @@ export const MonthComparison = ({
           label="Total Bad Ratings (DSAT)" 
           current={currentTotalBad} 
           previous={previousTotalBad} 
-          diff={badDiff} 
+          diff={badDiff}
+          invert
         />
         <MetricComparison 
           label="FCR Score" 

@@ -55,34 +55,6 @@ export default function WorkSchedule() {
           onMonthChange={setSelectedMonth}
           onYearChange={setSelectedYear}
         />
-        <Card className="p-4 border-border bg-card">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Button 
-              onClick={() => {
-                try { localStorage.setItem("ktb_quick_rating", "good"); } catch {}
-                navigate("/");
-                toast.success("Opening quick Add Good Rating…");
-              }}
-              className="h-12"
-            >
-              <Plus className="mr-2 h-5 w-5" /> Add Good Rating
-            </Button>
-            <Button 
-              onClick={() => {
-                try { localStorage.setItem("ktb_quick_rating", "bad"); } catch {}
-                navigate("/");
-                toast.error("Opening quick Add Bad Rating…");
-              }}
-              variant="destructive"
-              className="h-12"
-            >
-              <Minus className="mr-2 h-5 w-5" /> Add Bad Rating
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Uses Dashboard dialog and saves automatically.
-          </p>
-        </Card>
         <WorkScheduleSettings
           selectedMonth={selectedMonth}
           selectedYear={selectedYear}

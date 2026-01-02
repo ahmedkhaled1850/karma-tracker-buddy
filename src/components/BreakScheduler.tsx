@@ -214,7 +214,13 @@ export const BreakScheduler = () => {
 
   useEffect(() => {
     if (activeBreak) {
-      setTimeLeft(DURATIONS[activeBreak]);
+      if (currentStart) {
+        const elapsed = Math.floor((Date.now() - currentStart) / 1000);
+        const left = Math.max(0, DURATIONS[activeBreak] - elapsed);
+        setTimeLeft(left);
+      } else {
+        setTimeLeft(DURATIONS[activeBreak]);
+      }
       startCountdown();
     }
     return () => {
@@ -388,25 +394,34 @@ export const BreakScheduler = () => {
     autoStartTimeoutsRef.current = [];
 
     (["break1", "break2", "break3"] as BreakKey[]).forEach((key) => {
-      const start = parseTimeToDate(schedule[key]);
+      const now = new Date();
+      const [h, m] = schedule[key].split(":").map((x) => parseInt(x, 10));
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
+      const end = new Date(start.getTime() + DURATIONS[key] * 1000);
       const msUntilStart = start.getTime() - Date.now();
-      
-      if (msUntilStart > 0 && msUntilStart < 24 * 60 * 60 * 1000) {
+      if (msUntilStart > 0) {
         const id = window.setTimeout(() => {
           setActiveBreak(key);
-          setCurrentStart(Date.now());
+          setCurrentStart(start.getTime());
           setCurrentBreakKey(key);
-          localStorage.setItem("ktb_active_break", JSON.stringify({ key, start: Date.now() }));
+          localStorage.setItem("ktb_active_break", JSON.stringify({ key, start: start.getTime() }));
           notify("Break Started", `${BREAK_LABELS[key]} has started`);
         }, msUntilStart);
         autoStartTimeoutsRef.current.push(id);
+      } else if (Date.now() < end.getTime()) {
+        setActiveBreak(key);
+        setCurrentStart(start.getTime());
+        setCurrentBreakKey(key);
+        localStorage.setItem("ktb_active_break", JSON.stringify({ key, start: start.getTime() }));
       }
     });
   }
 
   function scheduleNotifications() {
     (["break1", "break2", "break3"] as BreakKey[]).forEach((key) => {
-      const start = parseTimeToDate(schedule[key]);
+      const now = new Date();
+      const [h, m] = schedule[key].split(":").map((x) => parseInt(x, 10));
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
       const end = new Date(start.getTime() + DURATIONS[key] * 1000);
       const beforeStartMs = start.getTime() - Date.now() - 5 * 60 * 1000;
       const beforeEndMs = end.getTime() - Date.now() - 60 * 1000;
@@ -416,7 +431,7 @@ export const BreakScheduler = () => {
         }, beforeStartMs);
         timeoutsRef.current.push(id);
       }
-      if (beforeEndMs > 0) {
+      if (Date.now() < end.getTime() && beforeEndMs > 0) {
         const id = window.setTimeout(() => {
           notify("Break Ending Soon", `1 minute left in ${BREAK_LABELS[key]} (ends at ${formatClock(end)})`);
         }, beforeEndMs);

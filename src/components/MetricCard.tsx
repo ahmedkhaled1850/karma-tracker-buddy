@@ -7,7 +7,7 @@ interface MetricCardProps {
   value: number;
   onIncrement: () => void;
   onDecrement: () => void;
-  color?: "primary" | "destructive" | "warning";
+  color?: "primary" | "destructive" | "warning" | "success";
   icon?: LucideIcon;
 }
 
@@ -16,12 +16,14 @@ export const MetricCard = ({ title, value, onIncrement, onDecrement, color = "pr
     primary: "text-primary bg-primary/10",
     destructive: "text-destructive bg-destructive/10",
     warning: "text-warning bg-warning/10",
+    success: "text-success bg-success/10",
   };
 
   const iconColorClasses = {
     primary: "text-primary",
     destructive: "text-destructive",
     warning: "text-warning",
+    success: "text-success",
   };
 
   return (

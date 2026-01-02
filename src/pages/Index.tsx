@@ -36,6 +36,9 @@ interface GenesysTicket {
   ratingScore: number;
   customerPhone: string;
   ticketDate: string;
+  ticketId?: string;
+  channel?: "Phone" | "Chat" | "Email";
+  note?: string;
 }
 
 interface MonthlyData {
@@ -233,13 +236,32 @@ const Index = () => {
           .eq('performance_id', perfData.id);
         
         if (!genesysError && genesysTicketsFromDB) {
-          setGenesysTickets(genesysTicketsFromDB.map((t: any) => ({
+          const loaded = genesysTicketsFromDB.map((t: any) => ({
             id: t.id,
             ticketLink: t.ticket_link,
             ratingScore: t.rating_score,
             customerPhone: t.customer_phone || "",
             ticketDate: t.ticket_date,
-          })));
+            ticketId: (t as any).ticket_id || "",
+            channel: ((t as any).channel as "Phone" | "Chat" | "Email") || "Phone",
+            note: (t as any).note || "",
+          }));
+          try {
+            const overridesStr = localStorage.getItem("ktb_genesys_ticket_overrides");
+            if (overridesStr) {
+              const overrides: Record<string, Partial<GenesysTicket>> = JSON.parse(overridesStr);
+              const merged = loaded.map(gt => {
+                const key = gt.id || `${gt.ticketLink}-${gt.ticketDate}`;
+                const ov = overrides[key];
+                return ov ? { ...gt, ...ov } : gt;
+              });
+              setGenesysTickets(merged);
+            } else {
+              setGenesysTickets(loaded);
+            }
+          } catch {
+            setGenesysTickets(loaded);
+          }
         }
       } else {
         // No data for this month, reset to empty
@@ -775,6 +797,22 @@ const Index = () => {
             updatedTickets = [...prev.tickets.slice(0, idx), ...prev.tickets.slice(idx + 1)];
           }
         }
+      } else if (field === "karmaBad") {
+        if (increment) {
+          const newTicket: Ticket = {
+            id: crypto.randomUUID(),
+            ticketId: "",
+            type: "Karma",
+            channel: "Chat",
+            note: "",
+          };
+          updatedTickets = [...prev.tickets, newTicket];
+        } else {
+          const idx = prev.tickets.findIndex(t => t.type === "Karma");
+          if (idx !== -1) {
+            updatedTickets = [...prev.tickets.slice(0, idx), ...prev.tickets.slice(idx + 1)];
+          }
+        }
       }
       return {
         ...prev,
@@ -798,6 +836,7 @@ const Index = () => {
 
   const totalGood = useMemo(() => data.good + data.genesysGood, [data.good, data.genesysGood]);
   const totalBad = useMemo(() => data.bad + data.genesysBad, [data.bad, data.genesysBad]);
+  const badColor: "primary" = "primary";
 
   // Smart rating handlers
   const openSmartDialog = useCallback((type: 'good' | 'bad') => {
@@ -811,19 +850,29 @@ const Index = () => {
     genesysData?: { ticketLink: string; ratingScore: number; customerPhone: string }
   ) => {
     if (isGenesys && genesysData) {
-      // Add Genesys ticket
       const isGoodRating = genesysData.ratingScore >= 7 && genesysData.ratingScore <= 9;
-      
       setGenesysTickets(prev => [...prev, {
+        id: crypto.randomUUID(),
         ticketLink: genesysData.ticketLink,
         ratingScore: genesysData.ratingScore,
         customerPhone: genesysData.customerPhone,
         ticketDate: new Date().toISOString().split('T')[0],
+        channel: "Phone",
+        note: "",
+        ticketId: "",
       }]);
       if (isGoodRating) {
+        setData(prev => ({ ...prev, genesysGood: prev.genesysGood + 1 }));
         setTodayStats(prev => ({ ...prev, good: prev.good + 1 }));
         toast.success('Genesys good rating added! 📞');
       } else {
+        setData(prev => ({ ...prev, genesysBad: prev.genesysBad + 1, bad: prev.bad + 1, tickets: [...prev.tickets, {
+          id: crypto.randomUUID(),
+          ticketId: "",
+          type: "DSAT",
+          channel: "Phone",
+          note: "Auto from Genesys bad rating",
+        }] }));
         setTodayStats(prev => ({ ...prev, bad: prev.bad + 1 }));
         toast.error('Genesys bad rating added');
       }
@@ -833,7 +882,6 @@ const Index = () => {
         }
       }, 0);
     } else {
-      // Add regular good rating to channel
       setData(prev => ({
         ...prev,
         good: prev.good + 1,
@@ -842,6 +890,16 @@ const Index = () => {
           [channel]: prev.goodByChannel[channel] + 1,
         },
       }));
+      setGenesysTickets(prev => [...prev, {
+        id: crypto.randomUUID(),
+        ticketLink: "",
+        ratingScore: 8,
+        customerPhone: "",
+        ticketDate: new Date().toISOString().split('T')[0],
+        channel: "Phone",
+        note: "",
+        ticketId: "",
+      }]);
       setTodayStats(prev => ({ ...prev, good: prev.good + 1 }));
       toast.success(`Good rating added to ${channel.charAt(0).toUpperCase() + channel.slice(1)}! ✨`);
       setTimeout(() => {
@@ -882,17 +940,61 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    // Sync genesysGood/genesysBad from genesysTickets to keep metrics consistent
-    const counts = genesysTickets.reduce(
-      (acc, t) => {
-        const isGood = t.ratingScore >= 7 && t.ratingScore <= 9;
-        if (isGood) acc.good += 1;
-        else acc.bad += 1;
-        return acc;
-      },
-      { good: 0, bad: 0 }
-    );
-    setData(prev => ({ ...prev, genesysGood: counts.good, genesysBad: counts.bad }));
+    const totalGoodNeeded = data.good + data.genesysGood;
+    const missingGoodTickets = Math.max(0, totalGoodNeeded - genesysTickets.length);
+    if (missingGoodTickets > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const newTickets = Array.from({ length: missingGoodTickets }).map(() => ({
+        ticketLink: "",
+        ratingScore: 8,
+        customerPhone: "",
+        ticketDate: today,
+      }));
+      setGenesysTickets(prev => [...prev, ...newTickets]);
+    }
+    const dsatExisting = data.tickets.filter(t => t.type === "DSAT").length;
+    const missingDsat = Math.max(0, data.bad - dsatExisting);
+    const karmaExisting = data.tickets.filter(t => t.type === "Karma").length;
+    const missingKarma = Math.max(0, data.karmaBad - karmaExisting);
+    if (missingDsat > 0 || missingKarma > 0) {
+      const newNegTickets: Ticket[] = [];
+      for (let i = 0; i < missingDsat; i++) {
+        newNegTickets.push({
+          id: crypto.randomUUID(),
+          ticketId: "",
+          type: "DSAT",
+          channel: "Chat",
+          note: "",
+        });
+      }
+      for (let i = 0; i < missingKarma; i++) {
+        newNegTickets.push({
+          id: crypto.randomUUID(),
+          ticketId: "",
+          type: "Karma",
+          channel: "Chat",
+          note: "",
+        });
+      }
+      if (newNegTickets.length > 0) {
+        setData(prev => ({ ...prev, tickets: [...prev.tickets, ...newNegTickets] }));
+      }
+    }
+  }, [data.good, data.genesysGood, data.bad, data.karmaBad, genesysTickets.length]);
+
+  useEffect(() => {
+    try {
+      const overrides: Record<string, Partial<GenesysTicket>> = {};
+      genesysTickets.forEach(t => {
+        const key = t.id || `${t.ticketLink}-${t.ticketDate}`;
+        overrides[key] = {
+          ticketId: t.ticketId || "",
+          channel: t.channel || "Phone",
+          note: t.note || "",
+        };
+      });
+      localStorage.setItem("ktb_genesys_ticket_overrides", JSON.stringify(overrides));
+    } catch {}
   }, [genesysTickets]);
 
   useEffect(() => {
@@ -955,15 +1057,44 @@ const Index = () => {
   const totalKarmaBase = useMemo(() => totalGood + totalBad + data.karmaBad, [totalGood, totalBad, data.karmaBad]);
   const karma = useMemo(() => totalKarmaBase > 0 ? (totalGood / totalKarmaBase) * 100 : 0, [totalGood, totalKarmaBase]);
 
-  const badByChannel = useMemo(() => data.tickets.reduce(
-    (acc, ticket) => {
-      if (ticket.type === "DSAT") {
-        acc[ticket.channel.toLowerCase() as keyof typeof acc]++;
+  const genesysGoodByChannel = useMemo(() => {
+    const counts = { phone: 0, chat: 0, email: 0 };
+    genesysTickets.forEach(t => {
+      const isGood = t.ratingScore >= 7 && t.ratingScore <= 9;
+      if (isGood) {
+        const ch = (t.channel || "Phone").toLowerCase() as keyof typeof counts;
+        counts[ch] += 1;
       }
-      return acc;
-    },
-    { phone: data.genesysBad, chat: 0, email: 0 }
-  ), [data.tickets, data.genesysBad]);
+    });
+    return counts;
+  }, [genesysTickets]);
+
+  const genesysBadByChannel = useMemo(() => {
+    const counts = { phone: 0, chat: 0, email: 0 };
+    genesysTickets.forEach(t => {
+      const isBad = !(t.ratingScore >= 7 && t.ratingScore <= 9);
+      if (isBad) {
+        const ch = (t.channel || "Phone").toLowerCase() as keyof typeof counts;
+        counts[ch] += 1;
+      }
+    });
+    return counts;
+  }, [genesysTickets]);
+
+  const badByChannel = useMemo(() => {
+    const base = { phone: 0, chat: 0, email: 0 };
+    data.tickets.forEach(ticket => {
+      if (ticket.type === "DSAT") {
+        const ch = ticket.channel.toLowerCase() as keyof typeof base;
+        base[ch] += 1;
+      }
+    });
+    return {
+      phone: base.phone + genesysBadByChannel.phone,
+      chat: base.chat + genesysBadByChannel.chat,
+      email: base.email + genesysBadByChannel.email,
+    };
+  }, [data.tickets, genesysBadByChannel]);
 
   const karmaByChannel = useMemo(() => data.tickets.reduce(
     (acc, ticket) => {
@@ -975,11 +1106,12 @@ const Index = () => {
     { phone: 0, chat: 0, email: 0 }
   ), [data.tickets]);
 
+  // Use Genesys tickets as the single source of truth for Good by channel
   const goodByChannelWithGenesys = useMemo(() => ({
-    phone: data.goodByChannel.phone + data.genesysGood,
-    chat: data.goodByChannel.chat,
-    email: data.goodByChannel.email,
-  }), [data.goodByChannel, data.genesysGood]);
+    phone: genesysGoodByChannel.phone,
+    chat: genesysGoodByChannel.chat,
+    email: genesysGoodByChannel.email,
+  }), [genesysGoodByChannel]);
   
   const insights = useMemo(() => {
     if (!monthlyChanges || monthlyChanges.length === 0) {
@@ -1033,10 +1165,10 @@ const Index = () => {
       ["Channel", "Good", "DSAT", "Karma", "Success Rate %"],
       ["Phone", goodByChannelWithGenesys.phone, badByChannel.phone, karmaByChannel.phone,
         ((goodByChannelWithGenesys.phone / (goodByChannelWithGenesys.phone + badByChannel.phone || 1)) * 100).toFixed(1)],
-      ["Chat", data.goodByChannel.chat, badByChannel.chat, karmaByChannel.chat,
-        ((data.goodByChannel.chat / (data.goodByChannel.chat + badByChannel.chat || 1)) * 100).toFixed(1)],
-      ["Email", data.goodByChannel.email, badByChannel.email, karmaByChannel.email,
-        ((data.goodByChannel.email / (data.goodByChannel.email + badByChannel.email || 1)) * 100).toFixed(1)],
+      ["Chat", goodByChannelWithGenesys.chat, badByChannel.chat, karmaByChannel.chat,
+        ((goodByChannelWithGenesys.chat / (goodByChannelWithGenesys.chat + badByChannel.chat || 1)) * 100).toFixed(1)],
+      ["Email", goodByChannelWithGenesys.email, badByChannel.email, karmaByChannel.email,
+        ((goodByChannelWithGenesys.email / (goodByChannelWithGenesys.email + badByChannel.email || 1)) * 100).toFixed(1)],
     ].map(row => row.join(",")).join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
@@ -1189,7 +1321,7 @@ const Index = () => {
                   value={totalBad}
                   onIncrement={() => updateMetric("bad", true)}
                   onDecrement={() => updateMetric("bad", false)}
-                  color="destructive"
+                  color={badColor}
                   icon={ThumbsDown}
                 />
                 <MetricCard
