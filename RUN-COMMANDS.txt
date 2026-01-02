@@ -1,0 +1,18 @@
+تشغيل المشروع على ويندوز (PowerShell):
+
+1) تثبيت Node.js LTS (اختياري إذا لم يكن مثبت)
+winget install --id OpenJS.NodeJS.LTS -e --source winget --accept-package-agreements --accept-source-agreements --silent
+
+2) تثبيت الحزم
+"C:\Program Files\nodejs\npm.cmd" install
+
+3) تشغيل السيرفر التطويري
+"C:\Program Files\nodejs\npm.cmd" run dev
+
+ملاحظات:
+- إذا كان npm متاحاً في الـ PATH يمكنك استخدام:
+npm i
+npm run dev
+
+- عنوان المعاينة المحلي:
+http://localhost:8080/
