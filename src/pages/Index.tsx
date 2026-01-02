@@ -1313,7 +1313,7 @@ const Index = () => {
                   value={totalGood}
                   onIncrement={() => updateMetric("good", true)}
                   onDecrement={() => updateMetric("good", false)}
-                  color="primary"
+                  color="success"
                   icon={ThumbsUp}
                 />
                 <MetricCard
@@ -1321,7 +1321,7 @@ const Index = () => {
                   value={totalBad}
                   onIncrement={() => updateMetric("bad", true)}
                   onDecrement={() => updateMetric("bad", false)}
-                  color={badColor}
+                  color="destructive"
                   icon={ThumbsDown}
                 />
                 <MetricCard
