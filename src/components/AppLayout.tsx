@@ -87,35 +87,44 @@ export default function AppLayout({ children }: AppLayoutProps) {
     break2: "14:00",
     break3: "17:00",
   });
+  const [shiftStartStr, setShiftStartStr] = useState<string>("");
+  
+  // Load break schedule from database
   useEffect(() => {
-    const loadSchedule = () => {
-      const stored = localStorage.getItem("ktb_break_schedule");
-      if (stored) {
-        try {
-          setBreakSchedule(JSON.parse(stored));
-        } catch {}
+    const loadScheduleFromDB = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('break1_time, break2_time, break3_time, shift_start_time')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setBreakSchedule({
+            break1: data.break1_time || "11:00",
+            break2: data.break2_time || "14:00",
+            break3: data.break3_time || "17:00",
+          });
+          if (data.shift_start_time) {
+            setShiftStartStr(data.shift_start_time);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading break schedule:', err);
       }
     };
     
-    loadSchedule();
-
-    const handler = (e: StorageEvent) => {
-      if (e.key === "ktb_break_schedule" && e.newValue) {
-        try {
-          setBreakSchedule(JSON.parse(e.newValue));
-        } catch {}
-      }
-    };
+    loadScheduleFromDB();
     
-    const customHandler = () => loadSchedule();
-
-    window.addEventListener("storage", handler);
+    // Also listen for updates
+    const customHandler = () => loadScheduleFromDB();
     window.addEventListener("ktb-schedule-updated", customHandler);
     return () => {
-      window.removeEventListener("storage", handler);
       window.removeEventListener("ktb-schedule-updated", customHandler);
     };
-  }, []);
+  }, [user?.id]);
   
   const [nextText, setNextText] = useState<string>("");
   const originalTitleRef = useRef<string | null>(null);
@@ -179,27 +188,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
-  const [shiftStartStr, setShiftStartStr] = useState<string>(() => localStorage.getItem("ktb_shift_start_time") || "");
-  useEffect(() => {
-    const loadShiftStart = () => {
-      setShiftStartStr(localStorage.getItem("ktb_shift_start_time") || "");
-    };
-
-    const handler = (e: StorageEvent) => {
-      if (e.key === "ktb_shift_start_time") {
-        setShiftStartStr(e.newValue || "");
-      }
-    };
-
-    const customHandler = () => loadShiftStart();
-
-    window.addEventListener("storage", handler);
-    window.addEventListener("ktb-schedule-updated", customHandler);
-    return () => {
-      window.removeEventListener("storage", handler);
-      window.removeEventListener("ktb-schedule-updated", customHandler);
-    };
-  }, []);
+  // shiftStartStr is now loaded from database in the breakSchedule effect above
   const shiftStartDate = useMemo(() => {
     if (!shiftStartStr) return null;
     const [h, m] = shiftStartStr.split(":").map((x) => parseInt(x, 10));
@@ -452,7 +441,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <div id="ktb-floating-circle" className="fixed bottom-6 right-6 z-50">
         <div
-          className="relative h-16 w-16 rounded-full border-2 border-primary/50 bg-card shadow-lg flex items-center justify-center select-none cursor-pointer"
+          className="relative h-24 w-24 rounded-full border-3 border-primary/50 bg-card shadow-xl flex items-center justify-center select-none cursor-pointer hover:scale-105 transition-transform"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -467,9 +456,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
               : (nextBreak ? `Next: ${labelFor(nextBreak.key)} at ${nextBreak.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "")
           }
         >
-          <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-spin" style={{ borderTopColor: "transparent" }} />
-          <div className="text-[11px] font-mono text-foreground text-center leading-tight px-2">
-            {nextText || "— —"}
+          <div className="absolute inset-1 rounded-full border-2 border-primary/20" />
+          <div className="absolute inset-0 rounded-full border-2 border-primary/40 animate-[spin_3s_linear_infinite]" style={{ borderTopColor: "transparent", borderRightColor: "transparent" }} />
+          <div className="text-xs font-mono text-foreground text-center leading-tight px-2">
+            {nextText || "Loading..."}
           </div>
         </div>
       </div>
