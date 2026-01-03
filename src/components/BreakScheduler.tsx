@@ -581,7 +581,7 @@ export const BreakScheduler = () => {
       </Card>
 
       <Card className="p-6 border-border bg-card">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <TimerReset className="h-5 w-5 text-primary" />
             <span className="font-medium">Current Break</span>
@@ -598,17 +598,32 @@ export const BreakScheduler = () => {
             )}
           </span>
         </div>
-        <div className="mt-3 text-4xl font-mono font-bold text-foreground text-center">
-          {activeBreak
-            ? formatTimeLeft(timeLeft)
-            : shiftStartDate && shiftEndDate
-              ? (Date.now() < shiftStartDate.getTime()
-                  ? `Next shift in ${nextCountdown}`
-                  : (Date.now() <= shiftEndDate.getTime()
-                      ? (nextUp ? `Next break in ${nextCountdown}` : `Shift ends in ${nextCountdown}`)
-                      : "No active break"))
-              : (nextCountdown ? `Next break in ${nextCountdown}` : "No active break")}
+        
+        {/* Large circular timer display */}
+        <div className="flex justify-center py-6">
+          <div className="relative w-48 h-48 rounded-full border-4 border-primary/20 flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
+            <div className="absolute inset-2 rounded-full border-2 border-primary/30" />
+            <div className="text-center">
+              <div className="text-4xl font-mono font-bold text-foreground">
+                {activeBreak
+                  ? formatTimeLeft(timeLeft)
+                  : nextCountdown || "00:00:00"}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {activeBreak
+                  ? BREAK_LABELS[activeBreak]
+                  : shiftStartDate && shiftEndDate
+                    ? (Date.now() < shiftStartDate.getTime()
+                        ? "Until shift starts"
+                        : (Date.now() <= shiftEndDate.getTime()
+                            ? (nextUp ? "Until next break" : "Until shift ends")
+                            : "No active shift"))
+                    : (nextUp ? "Until next break" : "")}
+              </div>
+            </div>
+          </div>
         </div>
+
         {activeBreak && (
           <div className="mt-4 flex items-center justify-center gap-2">
             <Button
@@ -637,21 +652,6 @@ export const BreakScheduler = () => {
             >
               End Break
             </Button>
-          </div>
-        )}
-        {!activeBreak && (
-          <div className="mt-6">
-            <h4 className="text-sm font-semibold mb-2">Break Log</h4>
-            <div className="space-y-2">
-              {breakLog.slice(-5).reverse().map((item, idx) => (
-                <div key={idx} className="text-xs text-muted-foreground">
-                  {BREAK_LABELS[item.key]} • Start {new Date(item.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} • 
-                  End {item.end ? new Date(item.end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "-"} • 
-                  Duration {item.durationSec ? formatTimeLeft(item.durationSec) : "-"}
-                </div>
-              ))}
-              {breakLog.length === 0 && <div className="text-xs text-muted-foreground">No breaks logged yet.</div>}
-            </div>
           </div>
         )}
       </Card>
