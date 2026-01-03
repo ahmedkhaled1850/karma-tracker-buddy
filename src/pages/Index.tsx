@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Save, Plus, Minus, LogOut, User, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -67,6 +67,7 @@ const Index = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [performanceId, setPerformanceId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("ktb_active_tab") || "overview";
@@ -585,82 +586,109 @@ const Index = () => {
       return;
     }
     
+    if (savingRef.current) {
+      return;
+    }
+    savingRef.current = true;
     setIsSaving(true);
     try {
       let currentPerformanceId = performanceId;
-
-      // Track daily changes
-      const today = new Date().toISOString().split('T')[0];
-      const changes: Array<{
+      let baseline: any = null;
+      let attempts = 0;
+      let changesForInsert: Array<{
         field_name: string;
         old_value: number;
         new_value: number;
         change_amount: number;
       }> = [];
 
-      if (previousData && currentPerformanceId) {
+      // Track daily changes
+      const today = new Date().toISOString().split('T')[0];
+      while (attempts < 3) {
+        const { data: existing, error: selErr } = await supabase
+          .from('performance_data')
+          .select('*')
+          .eq('year', selectedYear)
+          .eq('month', selectedMonth)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (selErr) throw selErr;
+        if (!existing) {
+          const { data: created, error: createErr } = await supabase
+            .from('performance_data')
+            .upsert({
+              year: selectedYear,
+              month: selectedMonth,
+              good: 0,
+              bad: 0,
+              karma_bad: 0,
+              genesys_good: 0,
+              genesys_bad: 0,
+              fcr: data.fcr,
+              good_phone: 0,
+              good_chat: 0,
+              good_email: 0,
+              user_id: user.id,
+            }, { onConflict: 'year,month,user_id' })
+            .select()
+            .single();
+          if (createErr) throw createErr;
+          baseline = created;
+        } else {
+          baseline = existing;
+        }
+        currentPerformanceId = baseline.id;
+        setPerformanceId(currentPerformanceId);
+
         const fieldsToTrack = [
-          { key: 'good', field: 'good' },
-          { key: 'bad', field: 'bad' },
-          { key: 'karmaBad', field: 'karma_bad' },
-          { key: 'genesysGood', field: 'genesys_good' },
-          { key: 'genesysBad', field: 'genesys_bad' },
+          { field: 'good', newVal: data.good, oldVal: baseline.good || 0 },
+          { field: 'bad', newVal: data.bad, oldVal: baseline.bad || 0 },
+          { field: 'karma_bad', newVal: data.karmaBad, oldVal: baseline.karma_bad || 0 },
+          { field: 'genesys_good', newVal: data.genesysGood, oldVal: baseline.genesys_good || 0 },
+          { field: 'genesys_bad', newVal: data.genesysBad, oldVal: baseline.genesys_bad || 0 },
         ];
+        changesForInsert = fieldsToTrack
+          .filter(f => f.newVal !== f.oldVal)
+          .map(f => ({
+            field_name: f.field,
+            old_value: f.oldVal,
+            new_value: f.newVal,
+            change_amount: f.newVal - f.oldVal,
+          }));
 
-        fieldsToTrack.forEach(({ key, field }) => {
-          const oldVal = previousData[key as keyof MonthlyData] as number;
-          const newVal = data[key as keyof MonthlyData] as number;
-          if (oldVal !== newVal) {
-            changes.push({
-              field_name: field,
-              old_value: oldVal,
-              new_value: newVal,
-              change_amount: newVal - oldVal,
-            });
-          }
-        });
+        const { data: updated, error: updErr } = await supabase
+          .from('performance_data')
+          .update({
+            year: selectedYear,
+            month: selectedMonth,
+            good: data.good,
+            bad: data.bad,
+            karma_bad: data.karmaBad,
+            genesys_good: data.genesysGood,
+            genesys_bad: data.genesysBad,
+            fcr: data.fcr,
+            good_phone: data.goodByChannel.phone,
+            good_chat: data.goodByChannel.chat,
+            good_email: data.goodByChannel.email,
+            user_id: user.id,
+          } as any)
+          .eq('id', currentPerformanceId)
+          .eq('updated_at', baseline.updated_at)
+          .select()
+          .single();
+
+        if (!updErr && updated) {
+          break;
+        }
+        attempts += 1;
       }
-
-      // Upsert performance data
-      const upsertData: any = {
-        year: selectedYear,
-        month: selectedMonth,
-        good: data.good,
-        bad: data.bad,
-        karma_bad: data.karmaBad,
-        genesys_good: data.genesysGood,
-        genesys_bad: data.genesysBad,
-        fcr: data.fcr,
-        good_phone: data.goodByChannel.phone,
-        good_chat: data.goodByChannel.chat,
-        good_email: data.goodByChannel.email,
-        user_id: user.id,
-      };
-
-      // Only include id if we're updating existing record
-      if (performanceId) {
-        upsertData.id = performanceId;
-      }
-
-      const { data: perfData, error: perfError } = await supabase
-        .from('performance_data')
-        .upsert(upsertData, {
-          onConflict: 'year,month,user_id',
-        })
-        .select()
-        .single();
-
-      if (perfError) throw perfError;
-
-      currentPerformanceId = perfData.id;
-      setPerformanceId(currentPerformanceId);
 
       // Insert daily changes with time
-      if (changes.length > 0) {
+      if (changesForInsert.length > 0 && currentPerformanceId) {
         const now = new Date();
         const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
         
-        const changesToInsert = changes.map(change => ({
+        const changesToInsert = changesForInsert.map(change => ({
           performance_id: currentPerformanceId,
           change_date: today,
           change_time: currentTime,
@@ -735,6 +763,7 @@ const Index = () => {
       toast.error('Failed to save data');
     } finally {
       setIsSaving(false);
+      savingRef.current = false;
     }
   };
 

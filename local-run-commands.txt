@@ -16,3 +16,4 @@ node node_modules/typescript/bin/tsc --noEmit
 PREVIEW
 npm run preview
 node node_modules/vite/bin/vite.js preview
+C:\Users\Kepv\Downloads\karma-tracker-buddy-main
