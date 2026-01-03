@@ -1,0 +1,18 @@
+DEV SERVER
+npm run dev
+node node_modules/vite/bin/vite.js
+
+BUILD
+npm run build
+node node_modules/vite/bin/vite.js build
+
+LINT
+npm run lint
+node node_modules/eslint/bin/eslint.js .
+
+TYPECHECK
+node node_modules/typescript/bin/tsc --noEmit
+
+PREVIEW
+npm run preview
+node node_modules/vite/bin/vite.js preview
