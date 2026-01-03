@@ -233,7 +233,8 @@ export const BreakScheduler = () => {
   })();
 
   const nextUp = useMemo(() => {
-    if (!shiftStartDate || !shiftEndDate) return null;
+    // Don't calculate until settings are loaded from database
+    if (loading || !shiftStartDate || !shiftEndDate) return null;
     const now = new Date();
     
     const entries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
@@ -258,7 +259,7 @@ export const BreakScheduler = () => {
     );
     
     return next || null;
-  }, [schedule, shiftStartDate, shiftEndDate, nextCountdown]);
+  }, [schedule, shiftStartDate, shiftEndDate, nextCountdown, loading]);
 
   useEffect(() => {
     if (activeBreak) {
