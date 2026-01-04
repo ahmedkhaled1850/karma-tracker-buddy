@@ -364,75 +364,6 @@ const Index = () => {
     } catch {}
   };
 
-  // Reconcile daily changes with performance data to fix any discrepancies
-  useEffect(() => {
-    const reconcileData = async () => {
-      if (!performanceId || !user || !monthlyChanges) return;
-
-      const currentGood = data.good;
-      const currentBad = data.bad;
-      
-      let changesGood = 0;
-      let changesBad = 0;
-      
-      monthlyChanges.forEach((c: any) => {
-        const amt = Number(c.change_amount) || 0;
-        if (c.field_name === 'good') changesGood += amt;
-        else if (c.field_name === 'bad') changesBad += amt;
-      });
-
-      // Check for discrepancies in Good ratings
-      if (changesGood !== currentGood) {
-        const diff = changesGood - currentGood;
-        if (diff > 0) {
-          // We have extra changes, delete the most recent ones
-          console.log(`Found ${diff} extra good ratings in logs. Cleaning up...`);
-          const changesToDelete = monthlyChanges
-            .filter((c: any) => c.field_name === 'good' && c.change_amount > 0)
-            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, diff);
-            
-          if (changesToDelete.length > 0) {
-            const idsToDelete = changesToDelete.map((c: any) => c.id);
-            await supabase.from('daily_changes').delete().in('id', idsToDelete);
-            // Refresh changes
-            loadMonthlyChanges(performanceId);
-            loadTodayStats(performanceId);
-            toast.success('Fixed data discrepancy in Good ratings');
-          }
-        }
-      }
-
-      // Check for discrepancies in Bad ratings
-      if (changesBad !== currentBad) {
-        const diff = changesBad - currentBad;
-        if (diff > 0) {
-          // We have extra changes, delete the most recent ones
-          console.log(`Found ${diff} extra bad ratings in logs. Cleaning up...`);
-          const changesToDelete = monthlyChanges
-            .filter((c: any) => c.field_name === 'bad' && c.change_amount > 0)
-            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, diff);
-            
-          if (changesToDelete.length > 0) {
-            const idsToDelete = changesToDelete.map((c: any) => c.id);
-            await supabase.from('daily_changes').delete().in('id', idsToDelete);
-            // Refresh changes
-            loadMonthlyChanges(performanceId);
-            loadTodayStats(performanceId);
-            toast.success('Fixed data discrepancy in Bad ratings');
-          }
-        }
-      }
-    };
-
-    // Debounce the reconciliation
-    const timer = setTimeout(() => {
-      reconcileData();
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [performanceId, monthlyChanges, data.good, data.bad, user]);
 
   useEffect(() => {
     if (
@@ -919,17 +850,13 @@ const Index = () => {
           [channel]: prev.goodByChannel[channel] + 1,
         },
       }));
-      setGenesysTickets(prev => [...prev, {
-        id: crypto.randomUUID(),
-        ticketLink: "",
-        ratingScore: 8,
-        customerPhone: "",
-        ticketDate: new Date().toISOString().split('T')[0],
-        channel: "Phone",
-        note: "",
-        ticketId: "",
-      }]);
       setTodayStats(prev => ({ ...prev, good: prev.good + 1 }));
+      toast.success(`Good rating added to ${channel.charAt(0).toUpperCase() + channel.slice(1)}! ✨`);
+      setTimeout(() => {
+        if (!isSaving) {
+          saveToDatabase();
+        }
+      }, 0);
       toast.success(`Good rating added to ${channel.charAt(0).toUpperCase() + channel.slice(1)}! ✨`);
       setTimeout(() => {
         if (!isSaving) {
@@ -968,48 +895,6 @@ const Index = () => {
     }, 0);
   }, []);
 
-  useEffect(() => {
-    const totalGoodNeeded = data.good + data.genesysGood;
-    const missingGoodTickets = Math.max(0, totalGoodNeeded - genesysTickets.length);
-    if (missingGoodTickets > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      const newTickets = Array.from({ length: missingGoodTickets }).map(() => ({
-        ticketLink: "",
-        ratingScore: 8,
-        customerPhone: "",
-        ticketDate: today,
-      }));
-      setGenesysTickets(prev => [...prev, ...newTickets]);
-    }
-    const dsatExisting = data.tickets.filter(t => t.type === "DSAT").length;
-    const missingDsat = Math.max(0, data.bad - dsatExisting);
-    const karmaExisting = data.tickets.filter(t => t.type === "Karma").length;
-    const missingKarma = Math.max(0, data.karmaBad - karmaExisting);
-    if (missingDsat > 0 || missingKarma > 0) {
-      const newNegTickets: Ticket[] = [];
-      for (let i = 0; i < missingDsat; i++) {
-        newNegTickets.push({
-          id: crypto.randomUUID(),
-          ticketId: "",
-          type: "DSAT",
-          channel: "Chat",
-          note: "",
-        });
-      }
-      for (let i = 0; i < missingKarma; i++) {
-        newNegTickets.push({
-          id: crypto.randomUUID(),
-          ticketId: "",
-          type: "Karma",
-          channel: "Chat",
-          note: "",
-        });
-      }
-      if (newNegTickets.length > 0) {
-        setData(prev => ({ ...prev, tickets: [...prev.tickets, ...newNegTickets] }));
-      }
-    }
-  }, [data.good, data.genesysGood, data.bad, data.karmaBad, genesysTickets.length]);
 
   useEffect(() => {
     try {
