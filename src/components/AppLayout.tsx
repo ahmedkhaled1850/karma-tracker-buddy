@@ -8,7 +8,7 @@ import { useIsFetching, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
-import { Menu, LayoutDashboard, Settings, LogOut } from "lucide-react";
+import { Menu, LayoutDashboard, Settings, LogOut, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -60,7 +60,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const showLoader = initialLoading || isLoading;
 
   const links = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
@@ -381,6 +380,68 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         </h1>
                     </div>
                     <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+                        <div className="space-y-2">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-3"
+                                onClick={() => {
+                                    localStorage.setItem("ktb_active_tab", "overview");
+                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "overview" })); } catch {}
+                                    navigate("/");
+                                }}
+                            >
+                                <LayoutDashboard className="h-5 w-5" />
+                                <span>Overview 📊</span>
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-3"
+                                onClick={() => {
+                                    localStorage.setItem("ktb_active_tab", "tickets");
+                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "tickets" })); } catch {}
+                                    navigate("/");
+                                }}
+                            >
+                                <LayoutDashboard className="h-5 w-5" />
+                                <span>Tickets 🎫</span>
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-3"
+                                onClick={() => {
+                                    localStorage.setItem("ktb_active_tab", "analytics");
+                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "analytics" })); } catch {}
+                                    navigate("/");
+                                }}
+                            >
+                                <LayoutDashboard className="h-5 w-5" />
+                                <span>Analytics 📈</span>
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-3"
+                                onClick={() => {
+                                    localStorage.setItem("ktb_active_tab", "notes");
+                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "notes" })); } catch {}
+                                    navigate("/");
+                                }}
+                            >
+                                <LayoutDashboard className="h-5 w-5" />
+                                <span>Notes & Schedule 📝</span>
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-3"
+                                onClick={() => {
+                                    localStorage.setItem("ktb_active_tab", "log");
+                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "log" })); } catch {}
+                                    navigate("/");
+                                }}
+                            >
+                                <LayoutDashboard className="h-5 w-5" />
+                                <span>Log 📋</span>
+                            </Button>
+                        </div>
                         {links.map((link) => {
                         const Icon = link.icon;
                         const isActive = location.pathname === link.href;
@@ -419,19 +480,45 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Desktop Header */}
-        <header className="hidden md:flex justify-between items-center p-4 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-            <span className="font-bold text-lg bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Big Brother
-            </span>
-            <Card className="px-3 py-2 flex items-center gap-3 border-none shadow-none bg-transparent">
-              <div className="text-right">
-                <div className="text-sm font-medium">{name}</div>
-                <div className="text-xs text-muted-foreground">{email}</div>
-              </div>
-              <Avatar className="h-8 w-8 border border-border">
+        <header className="hidden md:flex items-center justify-between gap-4 px-4 py-3 border-b bg-card/70 backdrop-blur-md sticky top-0 z-30">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9 border border-border">
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
-            </Card>
+              <div className="leading-tight">
+                <div className="text-sm font-semibold">{name}</div>
+                <div className="text-xs text-muted-foreground">{email}</div>
+              </div>
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 px-2 py-1 shadow-sm">
+                <Button 
+                  size="sm" 
+                  className="h-9 px-4 rounded-lg bg-success/15 text-success hover:bg-success/25"
+                  onClick={() => {
+                    try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "good" })); } catch {}
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="font-medium">Add Good</span>
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="h-9 px-4 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive/25"
+                  onClick={() => {
+                    try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "bad" })); } catch {}
+                  }}
+                >
+                  <Minus className="mr-2 h-4 w-4" />
+                  <span className="font-medium">Add Bad</span>
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={signOut}>
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
         </header>
 
         <main className="flex-1 container mx-auto px-4 py-6 md:px-8 md:py-8 animate-fade-in">

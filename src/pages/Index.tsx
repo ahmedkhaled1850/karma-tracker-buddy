@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Save, Plus, Minus, LogOut, User, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+ 
 import { MetricCard } from "@/components/MetricCard";
 import { PercentageDisplay } from "@/components/PercentageDisplay";
 import { GoalsSection } from "@/components/GoalsSection";
@@ -83,10 +83,22 @@ const Index = () => {
         setActiveTab(e.newValue);
       }
     };
+    const customHandler = (e: Event) => {
+      const ce = e as CustomEvent<string>;
+      const val = ce.detail;
+      if (typeof val === "string" && val.length > 0) {
+        setActiveTab(val);
+      }
+    };
     window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    window.addEventListener("ktb_tab_change", customHandler as EventListener);
+    return () => {
+      window.removeEventListener("storage", handler);
+      window.removeEventListener("ktb_tab_change", customHandler as EventListener);
+    };
   }, []);
-  
+
+ 
   // Smart rating dialog state
   const [smartDialogOpen, setSmartDialogOpen] = useState(false);
   const [smartDialogType, setSmartDialogType] = useState<'good' | 'bad' | null>(null);
@@ -113,6 +125,91 @@ const Index = () => {
   const [monthlyChanges, setMonthlyChanges] = useState<any[]>([]);
   const [shiftStartTime, setShiftStartTime] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
+
+  useEffect(() => {
+    const totalGoodNeeded = data.good + data.genesysGood;
+    const deltaGood = totalGoodNeeded - genesysTickets.length;
+    if (deltaGood > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const newTickets = Array.from({ length: deltaGood }).map(() => ({
+        ticketLink: "",
+        ratingScore: 8,
+        customerPhone: "",
+        ticketDate: today,
+      }));
+      setGenesysTickets(prev => [...prev, ...newTickets]);
+    } else if (deltaGood < 0) {
+      const toRemove = Math.abs(deltaGood);
+      setGenesysTickets(prev => {
+        const placeholders = prev
+          .map((t, idx) => ({ t, idx }))
+          .filter(x => (!x.t.ticketLink || x.t.ticketLink === "") && (x.t.ratingScore ?? 8) >= 7 && (x.t.ratingScore ?? 8) <= 9)
+          .map(x => x.idx);
+        let removeCount = Math.min(toRemove, placeholders.length);
+        let arr = [...prev];
+        for (let i = 0; i < removeCount; i++) {
+          const idx = placeholders[placeholders.length - 1 - i];
+          arr.splice(idx, 1);
+        }
+        return arr;
+      });
+    }
+    const dsatExisting = data.tickets.filter(t => t.type === "DSAT").length;
+    const desiredDsat = data.bad + data.genesysBad;
+    const deltaDsat = desiredDsat - dsatExisting;
+    const karmaExisting = data.tickets.filter(t => t.type === "Karma").length;
+    const desiredKarma = data.karmaBad;
+    const deltaKarma = desiredKarma - karmaExisting;
+    if (deltaDsat > 0 || deltaKarma > 0) {
+      const newNegTickets: Ticket[] = [];
+      for (let i = 0; i < Math.max(0, deltaDsat); i++) {
+        newNegTickets.push({
+          id: crypto.randomUUID(),
+          ticketId: "",
+          type: "DSAT",
+          channel: "Chat",
+          note: "",
+        });
+      }
+      for (let i = 0; i < Math.max(0, deltaKarma); i++) {
+        newNegTickets.push({
+          id: crypto.randomUUID(),
+          ticketId: "",
+          type: "Karma",
+          channel: "Chat",
+          note: "",
+        });
+      }
+      if (newNegTickets.length > 0) {
+        setData(prev => ({ ...prev, tickets: [...prev.tickets, ...newNegTickets] }));
+      }
+    } else if (deltaDsat < 0 || deltaKarma < 0) {
+      setData(prev => {
+        let tickets = [...prev.tickets];
+        const removeDsat = Math.max(0, -deltaDsat);
+        const removeKarma = Math.max(0, -deltaKarma);
+        if (removeDsat > 0) {
+          let count = removeDsat;
+          for (let i = tickets.length - 1; i >= 0 && count > 0; i--) {
+            if (tickets[i].type === "DSAT") {
+              tickets.splice(i, 1);
+              count--;
+            }
+          }
+        }
+        if (removeKarma > 0) {
+          let count = removeKarma;
+          for (let i = tickets.length - 1; i >= 0 && count > 0; i--) {
+            if (tickets[i].type === "Karma") {
+              tickets.splice(i, 1);
+              count--;
+            }
+          }
+        }
+        return { ...prev, tickets };
+      });
+    }
+  }, [data.good, data.genesysGood, data.bad, data.genesysBad, data.karmaBad, genesysTickets.length, data.tickets.length]);
 
   // Check if today should be counted based on shift time
   const shouldCountToday = useMemo(() => {
@@ -986,6 +1083,14 @@ const Index = () => {
     chat: genesysGoodByChannel.chat,
     email: genesysGoodByChannel.email,
   }), [genesysGoodByChannel]);
+ 
+  useEffect(() => {
+    try {
+      const detail = { totalGood, totalBad, karmaBad: data.karmaBad };
+      window.dispatchEvent(new CustomEvent("ktb_metrics_update", { detail }));
+      localStorage.setItem("ktb_metrics_update", JSON.stringify(detail));
+    } catch {}
+  }, [totalGood, totalBad, data.karmaBad]);
   
   const insights = useMemo(() => {
     if (!monthlyChanges || monthlyChanges.length === 0) {
@@ -1092,45 +1197,20 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Goals - Sticky Headers */}
-      <div className="sticky top-[136px] z-30 space-y-0">
-        <GoalsSection
-          currentValue={totalGood}
-          totalNegatives={totalBad}
-          metricName="CSAT"
-          targets={[88, 90, 95]}
-        />
-        <GoalsSection
-          currentValue={totalGood}
-          totalNegatives={totalBad + data.karmaBad}
-          metricName="Karma"
-          targets={[88, 90, 95]}
-        />
-      </div>
+ 
 
       <main className="container mx-auto px-6 py-10 mt-6 relative z-10">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <div className="space-y-4">
-            <div className="w-full">
-              <TabsList className="w-full flex flex-wrap items-center justify-start gap-3 p-3 h-auto">
-                <TabsTrigger value="overview" className="flex-none min-w-[160px] px-4 py-2 text-sm md:text-base">Overview 📊</TabsTrigger>
-                <TabsTrigger value="tickets" className="flex-none min-w-[160px] px-4 py-2 text-sm md:text-base">Tickets 🎫</TabsTrigger>
-                <TabsTrigger value="analytics" className="flex-none min-w-[160px] px-4 py-2 text-sm md:text-base">Analytics 📈</TabsTrigger>
-                <TabsTrigger value="notes" className="flex-none min-w-[200px] px-4 py-2 text-sm md:text-base">Notes & Schedule 📝</TabsTrigger>
-                <TabsTrigger value="log" className="flex-none min-w-[160px] px-4 py-2 text-sm md:text-base">Log 📋</TabsTrigger>
-              </TabsList>
-            </div>
-            <div className="w-full flex justify-end">
-              <MonthSelector
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                onMonthChange={setSelectedMonth}
-                onYearChange={setSelectedYear}
-              />
-            </div>
-          </div>
+        <div className="w-full flex justify-end">
+          <MonthSelector
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onMonthChange={setSelectedMonth}
+            onYearChange={setSelectedYear}
+          />
+        </div>
 
-          <TabsContent value="overview" className="space-y-8 animate-fade-in focus-visible:outline-none">
+          {activeTab === "overview" && (
+          <div className="space-y-8 animate-fade-in focus-visible:outline-none">
             {/* Main Performance Cards - CSAT & Karma */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-scale-in">
               <PercentageDisplay
@@ -1159,24 +1239,7 @@ const Index = () => {
               />
             </div>
 
-            {/* Smart Rating Buttons */}
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                onClick={() => openSmartDialog('good')} 
-                size="lg" 
-                className="h-16 text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              >
-                <Plus className="mr-2 h-6 w-6" /> Add Good Rating
-              </Button>
-              <Button 
-                onClick={() => openSmartDialog('bad')} 
-                size="lg" 
-                variant="destructive"
-                className="h-16 text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              >
-                <Minus className="mr-2 h-6 w-6" /> Add Bad Rating
-              </Button>
-            </div>
+ 
 
             {/* Metrics Cards */}
             <div>
@@ -1217,9 +1280,11 @@ const Index = () => {
                 previousValue={previousMonthData?.fcr}
               />
             </div>
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="tickets" className="space-y-6 animate-fade-in focus-visible:outline-none">
+          {activeTab === "tickets" && (
+          <div className="space-y-6 animate-fade-in focus-visible:outline-none">
              {/* Genesys & Tickets Section */}
             <div className="space-y-6">
               <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">🎫 Tickets Management</h2>
@@ -1244,9 +1309,11 @@ const Index = () => {
                   performanceId={performanceId}
                 />
              </div>
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="analytics" className="space-y-6 animate-fade-in focus-visible:outline-none">
+          {activeTab === "analytics" && (
+          <div className="space-y-6 animate-fade-in focus-visible:outline-none">
             {/* Analytics Section */}
             <div className="space-y-6">
               <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">📈 Analytics & Progress</h2>
@@ -1302,24 +1369,28 @@ const Index = () => {
                   totalGood={totalGood}
                 />
             </div>
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="notes" className="space-y-6 animate-fade-in focus-visible:outline-none">
+          {activeTab === "notes" && (
+          <div className="space-y-6 animate-fade-in focus-visible:outline-none">
               <DailyNotesSection performanceId={performanceId} />
               <div className="space-y-4">
                 <h3 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Break Time ⏱️</h3>
                 <BreakScheduler />
               </div>
-          </TabsContent>
+          </div>
+          )}
 
-          <TabsContent value="log" className="space-y-6 animate-fade-in focus-visible:outline-none">
+          {activeTab === "log" && (
+          <div className="space-y-6 animate-fade-in focus-visible:outline-none">
              {/* Daily Change Log */}
              <div className="space-y-6">
                <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">📋 Site Log History</h2>
                <DailyChangeLog performanceId={performanceId} />
              </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
       </main>
 
       <footer className="border-t border-border bg-card mt-16 animate-fade-in">
