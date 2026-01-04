@@ -522,74 +522,16 @@ const Index = () => {
     }
     savingRef.current = true;
     setIsSaving(true);
+
     try {
-      let currentPerformanceId = performanceId;
-      let baseline: any = null;
-      let attempts = 0;
-      let changesForInsert: Array<{
-        field_name: string;
-        old_value: number;
-        new_value: number;
-        change_amount: number;
-      }> = [];
+      if (!user) return;
 
-      // Track daily changes
-      const today = new Date().toISOString().split('T')[0];
-      while (attempts < 3) {
-        const { data: existing, error: selErr } = await supabase
-          .from('performance_data')
-          .select('*')
-          .eq('year', selectedYear)
-          .eq('month', selectedMonth)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (selErr) throw selErr;
-        if (!existing) {
-          const { data: created, error: createErr } = await supabase
-            .from('performance_data')
-            .upsert({
-              year: selectedYear,
-              month: selectedMonth,
-              good: 0,
-              bad: 0,
-              karma_bad: 0,
-              genesys_good: 0,
-              genesys_bad: 0,
-              fcr: data.fcr,
-              good_phone: 0,
-              good_chat: 0,
-              good_email: 0,
-              user_id: user.id,
-            }, { onConflict: 'year,month,user_id' })
-            .select()
-            .single();
-          if (createErr) throw createErr;
-          baseline = created;
-        } else {
-          baseline = existing;
-        }
-        currentPerformanceId = baseline.id;
-        setPerformanceId(currentPerformanceId);
-
-        const fieldsToTrack = [
-          { field: 'good', newVal: data.good, oldVal: baseline.good || 0 },
-          { field: 'bad', newVal: data.bad, oldVal: baseline.bad || 0 },
-          { field: 'karma_bad', newVal: data.karmaBad, oldVal: baseline.karma_bad || 0 },
-          { field: 'genesys_good', newVal: data.genesysGood, oldVal: baseline.genesys_good || 0 },
-          { field: 'genesys_bad', newVal: data.genesysBad, oldVal: baseline.genesys_bad || 0 },
-        ];
-        changesForInsert = fieldsToTrack
-          .filter(f => f.newVal !== f.oldVal)
-          .map(f => ({
-            field_name: f.field,
-            old_value: f.oldVal,
-            new_value: f.newVal,
-            change_amount: f.newVal - f.oldVal,
-          }));
-
-        const { data: updated, error: updErr } = await supabase
-          .from('performance_data')
-          .update({
+      // Ensure we have a performance record
+      const { data: perfRow, error: perfErr } = await supabase
+        .from("performance_data")
+        .upsert(
+          {
+            id: performanceId ?? undefined,
             year: selectedYear,
             month: selectedMonth,
             good: data.good,
@@ -602,51 +544,67 @@ const Index = () => {
             good_chat: data.goodByChannel.chat,
             good_email: data.goodByChannel.email,
             user_id: user.id,
-          } as any)
-          .eq('id', currentPerformanceId)
-          .eq('updated_at', baseline.updated_at)
-          .select()
-          .single();
+          } as any,
+          { onConflict: "year,month,user_id" }
+        )
+        .select()
+        .single();
 
-        if (!updErr && updated) {
-          break;
+      if (perfErr || !perfRow) throw perfErr;
+
+      const currentPerformanceId = perfRow.id as string;
+      setPerformanceId(currentPerformanceId);
+
+      // Log incremental daily changes based on the last in-app snapshot (NOT DB totals)
+      const baseline = previousData;
+      if (baseline) {
+        const fieldsToTrack = [
+          { field: "good", newVal: data.good, oldVal: baseline.good },
+          { field: "bad", newVal: data.bad, oldVal: baseline.bad },
+          { field: "karma_bad", newVal: data.karmaBad, oldVal: baseline.karmaBad },
+          { field: "genesys_good", newVal: data.genesysGood, oldVal: baseline.genesysGood },
+          { field: "genesys_bad", newVal: data.genesysBad, oldVal: baseline.genesysBad },
+        ];
+
+        const changesForInsert = fieldsToTrack
+          .filter((f) => f.newVal !== f.oldVal)
+          .map((f) => ({
+            field_name: f.field,
+            old_value: f.oldVal,
+            new_value: f.newVal,
+            change_amount: f.newVal - f.oldVal,
+          }));
+
+        if (changesForInsert.length > 0) {
+          const today = new Date().toISOString().split("T")[0];
+          const now = new Date();
+          const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now
+            .getMinutes()
+            .toString()
+            .padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+
+          const changesToInsert = changesForInsert.map((change) => ({
+            performance_id: currentPerformanceId,
+            change_date: today,
+            change_time: currentTime,
+            user_id: user.id,
+            ...change,
+          }));
+
+          const { error: changesError } = await supabase.from("daily_changes").insert(changesToInsert);
+          if (changesError) console.error("Error saving daily changes:", changesError);
         }
-        attempts += 1;
       }
 
-      // Insert daily changes with time
-      if (changesForInsert.length > 0 && currentPerformanceId) {
-        const now = new Date();
-        const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-        
-        const changesToInsert = changesForInsert.map(change => ({
-          performance_id: currentPerformanceId,
-          change_date: today,
-          change_time: currentTime,
-          user_id: user.id,
-          ...change,
-        }));
-
-        const { error: changesError } = await supabase
-          .from('daily_changes')
-          .insert(changesToInsert);
-
-        if (changesError) {
-          console.error('Error saving daily changes:', changesError);
-        }
-      }
-
-      // Delete existing tickets for this performance record
+      // Replace tickets for this month
       const { error: deleteError } = await supabase
-        .from('tickets')
+        .from("tickets")
         .delete()
-        .eq('performance_id', currentPerformanceId);
-
+        .eq("performance_id", currentPerformanceId);
       if (deleteError) throw deleteError;
 
-      // Insert new tickets
       if (data.tickets.length > 0) {
-        const ticketsToInsert = data.tickets.map(ticket => ({
+        const ticketsToInsert = data.tickets.map((ticket) => ({
           performance_id: currentPerformanceId,
           ticket_id: ticket.ticketId,
           type: ticket.type,
@@ -655,21 +613,15 @@ const Index = () => {
           user_id: user.id,
         }));
 
-        const { error: ticketsError } = await supabase
-          .from('tickets')
-          .insert(ticketsToInsert);
-
+        const { error: ticketsError } = await supabase.from("tickets").insert(ticketsToInsert);
         if (ticketsError) throw ticketsError;
       }
 
-      // Save Genesys tickets
-      await supabase
-        .from('genesys_tickets')
-        .delete()
-        .eq('performance_id', currentPerformanceId);
+      // Replace Genesys tickets for this month
+      await supabase.from("genesys_tickets").delete().eq("performance_id", currentPerformanceId);
 
       if (genesysTickets.length > 0) {
-        const genesysTicketsToInsert = genesysTickets.map(ticket => ({
+        const genesysTicketsToInsert = genesysTickets.map((ticket) => ({
           performance_id: currentPerformanceId,
           ticket_link: ticket.ticketLink,
           rating_score: ticket.ratingScore,
@@ -678,20 +630,16 @@ const Index = () => {
           user_id: user.id,
         }));
 
-        const { error: genesysError } = await supabase
-          .from('genesys_tickets')
-          .insert(genesysTicketsToInsert);
-
+        const { error: genesysError } = await supabase.from("genesys_tickets").insert(genesysTicketsToInsert);
         if (genesysError) throw genesysError;
       }
 
-      // Update previous data snapshot
+      // Snapshot after successful save
       setPreviousData({ ...data });
-
-      toast.success('Data saved successfully!');
+      toast.success("Data saved successfully!");
     } catch (error) {
-      console.error('Error saving data:', error);
-      toast.error('Failed to save data');
+      console.error("Error saving data:", error);
+      toast.error("Failed to save data");
     } finally {
       setIsSaving(false);
       savingRef.current = false;
@@ -737,55 +685,73 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autosaveMode, initialized, data, genesysTickets]);
 
-  const updateMetric = useCallback((field: keyof Pick<MonthlyData, "good" | "bad" | "karmaBad">, increment: boolean) => {
-    setData((prev) => {
-      const updatedValue = Math.max(0, prev[field] + (increment ? 1 : -1));
-      let updatedTickets = prev.tickets;
-      if (field === "bad") {
-        if (increment) {
-          const newTicket: Ticket = {
-            id: crypto.randomUUID(),
-            ticketId: "",
-            type: "DSAT",
-            channel: "Phone",
-            note: "",
-          };
-          updatedTickets = [...prev.tickets, newTicket];
-        } else {
-          const idx = prev.tickets.findIndex(t => t.type === "DSAT");
-          if (idx !== -1) {
-            updatedTickets = [...prev.tickets.slice(0, idx), ...prev.tickets.slice(idx + 1)];
+  const updateMetric = useCallback(
+    (field: keyof Pick<MonthlyData, "good" | "bad" | "karmaBad">, increment: boolean) => {
+      setData((prev) => {
+        // Special case: the UI shows totalGood (good + genesysGood), so decrement should affect
+        // regular good first, then genesys good if regular is already 0.
+        if (field === "good" && !increment) {
+          if (prev.good > 0) {
+            return { ...prev, good: prev.good - 1 };
+          }
+          if (prev.genesysGood > 0) {
+            return { ...prev, genesysGood: prev.genesysGood - 1 };
+          }
+          return prev;
+        }
+
+        const updatedValue = Math.max(0, prev[field] + (increment ? 1 : -1));
+        let updatedTickets = prev.tickets;
+
+        if (field === "bad") {
+          if (increment) {
+            const newTicket: Ticket = {
+              id: crypto.randomUUID(),
+              ticketId: "",
+              type: "DSAT",
+              channel: "Phone",
+              note: "",
+            };
+            updatedTickets = [...prev.tickets, newTicket];
+          } else {
+            const idx = prev.tickets.findIndex((t) => t.type === "DSAT");
+            if (idx !== -1) {
+              updatedTickets = [...prev.tickets.slice(0, idx), ...prev.tickets.slice(idx + 1)];
+            }
+          }
+        } else if (field === "karmaBad") {
+          if (increment) {
+            const newTicket: Ticket = {
+              id: crypto.randomUUID(),
+              ticketId: "",
+              type: "Karma",
+              channel: "Chat",
+              note: "",
+            };
+            updatedTickets = [...prev.tickets, newTicket];
+          } else {
+            const idx = prev.tickets.findIndex((t) => t.type === "Karma");
+            if (idx !== -1) {
+              updatedTickets = [...prev.tickets.slice(0, idx), ...prev.tickets.slice(idx + 1)];
+            }
           }
         }
-      } else if (field === "karmaBad") {
-        if (increment) {
-          const newTicket: Ticket = {
-            id: crypto.randomUUID(),
-            ticketId: "",
-            type: "Karma",
-            channel: "Chat",
-            note: "",
-          };
-          updatedTickets = [...prev.tickets, newTicket];
-        } else {
-          const idx = prev.tickets.findIndex(t => t.type === "Karma");
-          if (idx !== -1) {
-            updatedTickets = [...prev.tickets.slice(0, idx), ...prev.tickets.slice(idx + 1)];
-          }
+
+        return {
+          ...prev,
+          [field]: updatedValue,
+          tickets: updatedTickets,
+        };
+      });
+
+      setTimeout(() => {
+        if (!isSaving) {
+          saveToDatabase();
         }
-      }
-      return {
-        ...prev,
-        [field]: updatedValue,
-        tickets: updatedTickets,
-      };
-    });
-    setTimeout(() => {
-      if (!isSaving) {
-        saveToDatabase();
-      }
-    }, 0);
-  }, []);
+      }, 0);
+    },
+    [isSaving, saveToDatabase]
+  );
 
   const updateGoodRatings = useCallback((channel: keyof MonthlyData["goodByChannel"], value: number) => {
     setData((prev) => ({
@@ -857,14 +823,8 @@ const Index = () => {
           saveToDatabase();
         }
       }, 0);
-      toast.success(`Good rating added to ${channel.charAt(0).toUpperCase() + channel.slice(1)}! ✨`);
-      setTimeout(() => {
-        if (!isSaving) {
-          saveToDatabase();
-        }
-      }, 0);
     }
-  }, []);
+  }, [isSaving, saveToDatabase]);
 
   const handleSmartBadRating = useCallback((ticket: {
     ticketId: string;
