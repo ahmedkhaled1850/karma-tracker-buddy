@@ -126,90 +126,9 @@ const Index = () => {
   const [shiftStartTime, setShiftStartTime] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
 
-  useEffect(() => {
-    const totalGoodNeeded = data.good + data.genesysGood;
-    const deltaGood = totalGoodNeeded - genesysTickets.length;
-    if (deltaGood > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      const newTickets = Array.from({ length: deltaGood }).map(() => ({
-        ticketLink: "",
-        ratingScore: 8,
-        customerPhone: "",
-        ticketDate: today,
-      }));
-      setGenesysTickets(prev => [...prev, ...newTickets]);
-    } else if (deltaGood < 0) {
-      const toRemove = Math.abs(deltaGood);
-      setGenesysTickets(prev => {
-        const placeholders = prev
-          .map((t, idx) => ({ t, idx }))
-          .filter(x => (!x.t.ticketLink || x.t.ticketLink === "") && (x.t.ratingScore ?? 8) >= 7 && (x.t.ratingScore ?? 8) <= 9)
-          .map(x => x.idx);
-        let removeCount = Math.min(toRemove, placeholders.length);
-        let arr = [...prev];
-        for (let i = 0; i < removeCount; i++) {
-          const idx = placeholders[placeholders.length - 1 - i];
-          arr.splice(idx, 1);
-        }
-        return arr;
-      });
-    }
-    const dsatExisting = data.tickets.filter(t => t.type === "DSAT").length;
-    const desiredDsat = data.bad + data.genesysBad;
-    const deltaDsat = desiredDsat - dsatExisting;
-    const karmaExisting = data.tickets.filter(t => t.type === "Karma").length;
-    const desiredKarma = data.karmaBad;
-    const deltaKarma = desiredKarma - karmaExisting;
-    if (deltaDsat > 0 || deltaKarma > 0) {
-      const newNegTickets: Ticket[] = [];
-      for (let i = 0; i < Math.max(0, deltaDsat); i++) {
-        newNegTickets.push({
-          id: crypto.randomUUID(),
-          ticketId: "",
-          type: "DSAT",
-          channel: "Chat",
-          note: "",
-        });
-      }
-      for (let i = 0; i < Math.max(0, deltaKarma); i++) {
-        newNegTickets.push({
-          id: crypto.randomUUID(),
-          ticketId: "",
-          type: "Karma",
-          channel: "Chat",
-          note: "",
-        });
-      }
-      if (newNegTickets.length > 0) {
-        setData(prev => ({ ...prev, tickets: [...prev.tickets, ...newNegTickets] }));
-      }
-    } else if (deltaDsat < 0 || deltaKarma < 0) {
-      setData(prev => {
-        let tickets = [...prev.tickets];
-        const removeDsat = Math.max(0, -deltaDsat);
-        const removeKarma = Math.max(0, -deltaKarma);
-        if (removeDsat > 0) {
-          let count = removeDsat;
-          for (let i = tickets.length - 1; i >= 0 && count > 0; i--) {
-            if (tickets[i].type === "DSAT") {
-              tickets.splice(i, 1);
-              count--;
-            }
-          }
-        }
-        if (removeKarma > 0) {
-          let count = removeKarma;
-          for (let i = tickets.length - 1; i >= 0 && count > 0; i--) {
-            if (tickets[i].type === "Karma") {
-              tickets.splice(i, 1);
-              count--;
-            }
-          }
-        }
-        return { ...prev, tickets };
-      });
-    }
-  }, [data.good, data.genesysGood, data.bad, data.genesysBad, data.karmaBad, genesysTickets.length, data.tickets.length]);
+  // IMPORTANT: Do NOT auto-reconcile counters from tickets/genesys lists.
+  // This was causing cascaded changes (+10 then -9, etc.) and polluting the Daily Change Log.
+  // Metrics should only change via explicit user actions (Smart Rating / +/- buttons).
 
   // Check if today should be counted based on shift time
   const shouldCountToday = useMemo(() => {
@@ -661,6 +580,7 @@ const Index = () => {
           { field: "karma_bad", newVal: data.karmaBad, oldVal: baseline.karmaBad },
           { field: "genesys_good", newVal: data.genesysGood, oldVal: baseline.genesysGood },
           { field: "genesys_bad", newVal: data.genesysBad, oldVal: baseline.genesysBad },
+          { field: "fcr", newVal: data.fcr, oldVal: baseline.fcr },
         ];
 
         const changesForInsert = fieldsToTrack

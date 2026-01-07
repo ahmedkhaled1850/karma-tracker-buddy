@@ -75,6 +75,7 @@ export const DailyChangeLog = ({ performanceId }: DailyChangeLogProps) => {
       good: "Good",
       bad: "DSAT",
       karma_bad: "Karma Bad",
+      fcr: "FCR",
       good_phone: "Phone Good",
       good_chat: "Chat Good",
       good_email: "Email Good",
