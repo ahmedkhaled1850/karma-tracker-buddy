@@ -187,103 +187,114 @@ export default function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
-  // shiftStartStr is now loaded from database in the breakSchedule effect above
+  // Shift window helper (supports shifts that cross midnight)
   const shiftStartDate = useMemo(() => {
     if (!shiftStartStr) return null;
     const [h, m] = shiftStartStr.split(":").map((x) => parseInt(x, 10));
     if (isNaN(h) || isNaN(m)) return null;
+
     const now = new Date();
-    const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-    return dt;
-  }, [shiftStartStr]);
+
+    const startYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, h, m, 0, 0);
+    const endYesterday = new Date(startYesterday.getTime() + 9 * 3600 * 1000);
+    if (now >= startYesterday && now <= endYesterday) return startYesterday;
+
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+    const endToday = new Date(startToday.getTime() + 9 * 3600 * 1000);
+    if (now >= startToday && now <= endToday) return startToday;
+
+    if (now < startToday) return startToday;
+
+    const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0, 0);
+    return startTomorrow;
+  }, [shiftStartStr, nextText]);
+
   const shiftEndDate = useMemo(() => {
     if (!shiftStartDate) return null;
     return new Date(shiftStartDate.getTime() + 9 * 3600 * 1000);
   }, [shiftStartDate]);
-  const nextBreak = useMemo(() => {
-    const now = new Date();
-    const todayEntries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
-      const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
-      const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
-      return { key: k, start: dt };
-    }).sort((a, b) => a.start.getTime() - b.start.getTime());
-    if (shiftStartDate && shiftEndDate) {
-      const startBound = shiftStartDate.getTime();
-      const endBound = shiftEndDate.getTime();
-      const upcoming = todayEntries.find(e => e.start.getTime() > now.getTime() && e.start.getTime() >= startBound && e.start.getTime() <= endBound);
-      return upcoming || null;
-    }
-    const upcoming = todayEntries.find(e => e.start.getTime() > now.getTime());
-    return upcoming || null;
-  }, [breakSchedule, shiftStartDate, shiftEndDate]);
+
   const DURATIONS: Record<BreakKey, number> = { break1: 15 * 60, break2: 30 * 60, break3: 15 * 60 };
+
+  const nextBreak = useMemo(() => {
+    if (!shiftStartDate || !shiftEndDate) return null;
+
+    const nowMs = Date.now();
+    const startMs = shiftStartDate.getTime();
+    const endMs = shiftEndDate.getTime();
+
+    // Only show "next break" while inside the shift window
+    if (nowMs < startMs || nowMs > endMs) return null;
+
+    const breaksInShift = (["break1", "break2", "break3"] as BreakKey[])
+      .map((k) => {
+        const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
+        const dt = new Date(
+          shiftStartDate.getFullYear(),
+          shiftStartDate.getMonth(),
+          shiftStartDate.getDate(),
+          h || 0,
+          m || 0,
+          0,
+          0
+        );
+        if (dt.getTime() < startMs) dt.setDate(dt.getDate() + 1);
+        return { key: k, start: dt };
+      })
+      .filter((b) => b.start.getTime() >= startMs && b.start.getTime() <= endMs)
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    return breaksInShift.find((b) => b.start.getTime() > nowMs) || null;
+  }, [breakSchedule, shiftStartDate, shiftEndDate]);
+
   const computeCircleText = () => {
     const nowMs = Date.now();
+
+    // If a break is active, show break countdown
     if (activeBreakInfo) {
       const dur = DURATIONS[activeBreakInfo.key];
       const elapsed = Math.floor((nowMs - activeBreakInfo.start) / 1000);
       const left = Math.max(0, dur - elapsed);
-      return left > 0 ? `Break left ${formatHMS(left)}` : `Break left 00:00:00`;
+      return `Break left ${formatHMS(left)}`;
     }
 
-    const events: { label: string, time: number }[] = [];
-
-    if (shiftStartStr) {
-       const [h, m] = shiftStartStr.split(":").map(x => parseInt(x, 10));
-       const now = new Date();
-       
-       // Check if currently in shift
-       let s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-       let e = new Date(s.getTime() + 9 * 3600 * 1000);
-       
-       let inShift = false;
-       let shiftEnd = 0;
-       
-       if (nowMs >= s.getTime() && nowMs <= e.getTime()) {
-           inShift = true;
-           shiftEnd = e.getTime();
-       } else {
-           // Check Yesterday's start (for overnight)
-           let sPrev = new Date(s.getTime() - 24 * 3600 * 1000);
-           let ePrev = new Date(sPrev.getTime() + 9 * 3600 * 1000);
-           if (nowMs >= sPrev.getTime() && nowMs <= ePrev.getTime()) {
-               inShift = true;
-               shiftEnd = ePrev.getTime();
-           }
-       }
-       
-       if (inShift) {
-           events.push({ label: "Shift ends", time: shiftEnd });
-       } else {
-           // Not in shift. Next event is Shift Start.
-           let nextS = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-           if (nextS.getTime() <= nowMs) {
-               nextS.setDate(nextS.getDate() + 1);
-           }
-           events.push({ label: "Next shift", time: nextS.getTime() });
-       }
+    if (!shiftStartDate || !shiftEndDate) {
+      return "";
     }
 
-    // Breaks
-    (["break1", "break2", "break3"] as BreakKey[]).forEach((k) => {
+    const startMs = shiftStartDate.getTime();
+    const endMs = shiftEndDate.getTime();
+
+    // Before shift: countdown to shift start
+    if (nowMs < startMs) {
+      return `Next shift in ${formatHMS(Math.max(0, Math.floor((startMs - nowMs) / 1000)))}`;
+    }
+
+    // After shift: countdown to next shift
+    if (nowMs > endMs) {
+      const nextStart = startMs + 24 * 3600 * 1000;
+      return `Next shift in ${formatHMS(Math.max(0, Math.floor((nextStart - nowMs) / 1000)))}`;
+    }
+
+    // During shift: countdown to next break (within this shift) or shift end
+    const breaksInShift = (["break1", "break2", "break3"] as BreakKey[])
+      .map((k) => {
         const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
-        const now = new Date();
-        let dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-        if (dt.getTime() <= nowMs) {
-            dt.setDate(dt.getDate() + 1);
-        }
-        events.push({ label: "Next break", time: dt.getTime() });
-    });
+        // Break time relative to the current shift date
+        const dt = new Date(shiftStartDate.getFullYear(), shiftStartDate.getMonth(), shiftStartDate.getDate(), h || 0, m || 0, 0, 0);
+        // If break is before shift start time, it belongs to next day (overnight)
+        if (dt.getTime() < startMs) dt.setDate(dt.getDate() + 1);
+        return { key: k, start: dt.getTime() };
+      })
+      .filter((b) => b.start >= startMs && b.start <= endMs)
+      .sort((a, b) => a.start - b.start);
 
-    events.sort((a, b) => a.time - b.time);
-    
-    if (events.length > 0) {
-        const next = events[0];
-        const s = Math.floor((next.time - nowMs) / 1000);
-        return `${next.label} in ${formatHMS(s)}`;
+    const next = breaksInShift.find((b) => b.start > nowMs);
+    if (next) {
+      return `Next break in ${formatHMS(Math.max(0, Math.floor((next.start - nowMs) / 1000)))}`;
     }
-    
-    return "";
+
+    return `Shift ends in ${formatHMS(Math.max(0, Math.floor((endMs - nowMs) / 1000)))}`;
   };
   useEffect(() => {
     if (originalTitleRef.current === null) originalTitleRef.current = document.title;

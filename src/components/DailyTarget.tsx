@@ -211,36 +211,44 @@ export const DailyTarget = ({
       <div className="grid grid-cols-3 gap-3 mb-6">
         {levels.map((level) => {
           const isAchieved = currentKarma >= level.percentage;
-          const isNext = !isAchieved && (level.level === 1 || currentKarma >= levels[level.level - 2]?.percentage);
-          
+          const nextUnachieved = levels.find((l) => currentKarma < l.percentage)?.level ?? null;
+          const isNext = !isAchieved && nextUnachieved === level.level;
+
           return (
             <div
               key={level.level}
               className={`p-4 rounded-lg border-2 text-center transition-all ${
-                isAchieved 
-                  ? 'bg-success/10 border-success' 
-                  : isNext 
-                  ? 'bg-primary/10 border-primary' 
-                  : 'bg-muted border-border'
+                isAchieved
+                  ? "bg-success/10 border-success"
+                  : isNext
+                  ? "bg-primary/10 border-primary"
+                  : "bg-muted border-border"
               }`}
             >
-              <div className={`flex justify-center mb-2 ${isAchieved ? 'text-success' : isNext ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div
+                className={`flex justify-center mb-2 ${
+                  isAchieved ? "text-success" : isNext ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
                 {level.icon}
               </div>
-              <div className={`text-lg font-bold ${isAchieved ? 'text-success' : isNext ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div
+                className={`text-lg font-bold ${
+                  isAchieved ? "text-success" : isNext ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
                 {level.percentage}%
               </div>
               <div className="text-xs text-muted-foreground">{level.label}</div>
+
               {isAchieved ? (
                 <div className="text-xs text-success font-medium mt-1">✓ Achieved</div>
               ) : (
                 <div className="mt-2 space-y-1">
-                  <div className={`text-sm font-semibold ${isNext ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {level.needed} more needed
+                  <div className={`text-sm font-semibold ${isNext ? "text-primary" : "text-muted-foreground"}`}>
+                    {level.needed} total needed
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {level.dailyTarget}/day
-                  </div>
+                  <div className="text-xs text-muted-foreground">≈ {level.dailyTarget}/day</div>
                 </div>
               )}
             </div>

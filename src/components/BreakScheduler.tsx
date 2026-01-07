@@ -329,7 +329,8 @@ export const BreakScheduler = () => {
   }, [schedule, loading]);
 
   useEffect(() => {
-    requestNotificationPermission();
+    // Don't auto-request notification permission on mount (browsers often block it without a user gesture).
+    // Scheduling still works; OS notifications will appear once the user enables them via the button.
     if (!loading && !initialLoadRef.current) {
       clearScheduled();
       scheduleNotifications();
@@ -337,12 +338,24 @@ export const BreakScheduler = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, initialLoadRef.current]);
+
   const requestNotificationPermission = async () => {
-    if (!("Notification" in window)) return;
-    if (Notification.permission === "default") {
-      try {
-        await Notification.requestPermission();
-      } catch {}
+    if (!("Notification" in window)) {
+      toast.error("Notifications not supported in this browser");
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      toast.success("Notifications are enabled");
+      return;
+    }
+
+    try {
+      const res = await Notification.requestPermission();
+      if (res === "granted") toast.success("Notifications enabled");
+      else toast.error("Notifications blocked — allow them in browser settings");
+    } catch {
+      toast.error("Could not enable notifications");
     }
   };
 
@@ -366,12 +379,25 @@ export const BreakScheduler = () => {
   };
 
   const notify = (title: string, body: string) => {
-    toast.message(title, { description: body });
+    // In-app toast always
+    toast.message(title, {
+      description: body,
+      action:
+        "Notification" in window && Notification.permission !== "granted"
+          ? {
+              label: "Enable",
+              onClick: requestNotificationPermission,
+            }
+          : undefined,
+    });
+
+    // OS notification (requires permission)
     if ("Notification" in window && Notification.permission === "granted") {
       try {
         new Notification(title, { body });
       } catch {}
     }
+
     playBeep();
   };
 
