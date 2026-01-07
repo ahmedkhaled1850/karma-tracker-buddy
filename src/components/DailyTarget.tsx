@@ -75,10 +75,11 @@ export const DailyTarget = ({
     
     levels.forEach((level) => {
       const targetPercentage = level.percentage / 100;
-      // Formula: needed = (target% * totalBase - currentGood) / (1 - target%)
-      const needed = Math.ceil((targetPercentage * totalKarmaBase - currentGood) / (1 - targetPercentage));
+      const neededRaw = (targetPercentage * totalKarmaBase - currentGood) / (1 - targetPercentage);
+      const needed = Math.ceil(neededRaw);
       level.needed = Math.max(0, needed);
-      level.dailyTarget = Math.ceil(level.needed / remainingWorkDays);
+      const perDay = level.needed > 0 ? level.needed / remainingWorkDays : 0;
+      level.dailyTarget = Math.round(perDay * 100) / 100;
     });
     
     // Find current level

@@ -259,6 +259,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
 
     if (!shiftStartDate || !shiftEndDate) {
+      // Fallback: no shift configured — show countdown to next scheduled break
+      const now = new Date();
+      const upcoming = (["break1", "break2", "break3"] as BreakKey[])
+        .map((k) => {
+          const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
+          let dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
+          if (dt.getTime() <= now.getTime()) dt.setDate(dt.getDate() + 1);
+          return dt.getTime();
+        })
+        .sort((a, b) => a - b)[0];
+      if (upcoming) {
+        return `Next break in ${formatHMS(Math.max(0, Math.floor((upcoming - nowMs) / 1000)))}`;
+      }
       return "";
     }
 

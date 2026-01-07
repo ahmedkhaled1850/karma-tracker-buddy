@@ -611,6 +611,29 @@ const Index = () => {
           const { error: changesError } = await supabase.from("daily_changes").insert(changesToInsert);
           if (changesError) console.error("Error saving daily changes:", changesError);
         }
+      } else {
+        // First save this session: ensure FCR is logged at least once
+        if (data.fcr !== undefined) {
+          const today = new Date().toISOString().split("T")[0];
+          const now = new Date();
+          const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now
+            .getMinutes()
+            .toString()
+            .padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
+          const { error: changesError } = await supabase.from("daily_changes").insert([
+            {
+              performance_id: currentPerformanceId,
+              change_date: today,
+              change_time: currentTime,
+              user_id: user.id,
+              field_name: "fcr",
+              old_value: null,
+              new_value: data.fcr,
+              change_amount: null,
+            },
+          ]);
+          if (changesError) console.error("Error saving initial FCR change:", changesError);
+        }
       }
 
       // Replace tickets for this month

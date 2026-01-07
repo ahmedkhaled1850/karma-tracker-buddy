@@ -233,32 +233,43 @@ export const BreakScheduler = () => {
   })();
 
   const nextUp = useMemo(() => {
-    // Don't calculate until settings are loaded from database
-    if (loading || !shiftStartDate || !shiftEndDate) return null;
+    if (loading) return null;
     const now = new Date();
-    
+    // If shift window is known, compute relative to shift
+    if (shiftStartDate && shiftEndDate) {
+      const entries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
+        const [h, m] = schedule[k].split(":").map((x) => parseInt(x, 10));
+        let start = new Date(
+          shiftStartDate.getFullYear(),
+          shiftStartDate.getMonth(),
+          shiftStartDate.getDate(),
+          h,
+          m,
+          0,
+          0
+        );
+        if (start.getTime() < shiftStartDate.getTime()) {
+          start.setDate(start.getDate() + 1);
+        }
+        return { key: k, start };
+      });
+      entries.sort((a, b) => a.start.getTime() - b.start.getTime());
+      const next = entries.find(
+        (e) => e.start.getTime() > now.getTime() && e.start.getTime() <= shiftEndDate.getTime()
+      );
+      return next || null;
+    }
+    // Fallback: compute next scheduled break today/tomorrow even without shift window
     const entries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
       const [h, m] = schedule[k].split(":").map((x) => parseInt(x, 10));
-      // Create break date relative to shiftStartDate
-      let start = new Date(shiftStartDate.getFullYear(), shiftStartDate.getMonth(), shiftStartDate.getDate(), h, m, 0, 0);
-      
-      // If break is earlier than shift start, it must be next day
-      if (start.getTime() < shiftStartDate.getTime()) {
-         start.setDate(start.getDate() + 1);
+      let start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
+      if (start.getTime() <= now.getTime()) {
+        start.setDate(start.getDate() + 1);
       }
-      
       return { key: k, start };
     });
-    
     entries.sort((a, b) => a.start.getTime() - b.start.getTime());
-    
-    // Find next break that hasn't started yet AND is within the shift
-    const next = entries.find(e => 
-        e.start.getTime() > now.getTime() && 
-        e.start.getTime() <= shiftEndDate.getTime()
-    );
-    
-    return next || null;
+    return entries[0] || null;
   }, [schedule, shiftStartDate, shiftEndDate, nextCountdown, loading]);
 
   useEffect(() => {
