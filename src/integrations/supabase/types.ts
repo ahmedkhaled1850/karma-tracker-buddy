@@ -99,6 +99,36 @@ export type Database = {
           },
         ]
       }
+      daily_survey_calls: {
+        Row: {
+          call_date: string
+          created_at: string
+          id: string
+          surveys_sent: number
+          total_calls: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          call_date?: string
+          created_at?: string
+          id?: string
+          surveys_sent?: number
+          total_calls?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          call_date?: string
+          created_at?: string
+          id?: string
+          surveys_sent?: number
+          total_calls?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       genesys_tickets: {
         Row: {
           created_at: string

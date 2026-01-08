@@ -1,8 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Download, Save, Plus, Minus, LogOut, User, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
  
@@ -24,6 +21,7 @@ import { DailyNotesSection, DailyNote } from "@/components/DailyNotesSection";
 import { BreakScheduler } from "@/components/BreakScheduler";
 import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
+import SurveyConversion from "@/components/SurveyConversion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -128,20 +126,6 @@ const Index = () => {
   const [monthlyChanges, setMonthlyChanges] = useState<any[]>([]);
   const [shiftStartTime, setShiftStartTime] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
-  const [todaysCalls, setTodaysCalls] = useState<number>(() => {
-    try {
-      const v = localStorage.getItem(`ktb_calls_${todayStr}`);
-      return v ? parseInt(v, 10) || 0 : 0;
-    } catch {
-      return 0;
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem(`ktb_calls_${todayStr}`, String(todaysCalls));
-    } catch {}
-  }, [todaysCalls, todayStr]);
 
   // IMPORTANT: Do NOT auto-reconcile counters from tickets/genesys lists.
   // This was causing cascaded changes (+10 then -9, etc.) and polluting the Daily Change Log.
@@ -1201,46 +1185,11 @@ const Index = () => {
 
             {/* Survey Conversion Requirement (85%) */}
             <div className="animate-fade-in">
-              <Card className="p-6 border-border bg-card shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-foreground">Survey Conversion Requirement (85%)</h3>
-                  <span className="text-xs text-muted-foreground">Daily</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="todays-calls" className="text-xs">Today's Calls</Label>
-                    <Input
-                      id="todays-calls"
-                      type="number"
-                      min={0}
-                      value={todaysCalls || ""}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        const n = parseInt(v, 10);
-                        setTodaysCalls(!v ? 0 : isNaN(n) ? 0 : Math.max(0, n));
-                      }}
-                    />
-                    <div className="text-xs text-muted-foreground">Enter total calls received today</div>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <div className="rounded-lg border p-4 h-full flex items-center justify-between">
-                      <div>
-                        <div className="text-sm text-muted-foreground">Required to send to survey</div>
-                        <div className="text-2xl font-bold text-foreground">
-                          {Math.ceil(todaysCalls * 0.85)}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Minimum 85% of today's calls should be converted to survey
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground">Conversion target</div>
-                        <div className="text-xl font-semibold text-foreground">85%</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+              <SurveyConversion
+                userId={user.id}
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+              />
             </div>
  
 
