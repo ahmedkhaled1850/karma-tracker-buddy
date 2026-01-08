@@ -169,8 +169,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [activeBreakInfo, setActiveBreakInfo] = useState<{ key: BreakKey; start: number } | null>(() => {
     const v = localStorage.getItem("ktb_active_break");
     if (!v) return null;
-    try { return JSON.parse(v); } catch { return null; }
+    try {
+      const parsed = JSON.parse(v);
+      return parsed && typeof parsed.start === "number" ? parsed : null;
+    } catch {
+      return null;
+    }
   });
+
+  // Keep active break in sync even within the same tab ("storage" doesn't fire in same document)
+  const readActiveBreakFromStorage = () => {
+    const v = localStorage.getItem("ktb_active_break");
+    if (!v) return null;
+    try {
+      const parsed = JSON.parse(v);
+      return parsed && typeof parsed.start === "number" ? (parsed as { key: BreakKey; start: number }) : null;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       if (e.key === "ktb_active_break") {
@@ -181,38 +199,44 @@ export default function AppLayout({ children }: AppLayoutProps) {
         }
       }
       if (e.key === "ktb_break_schedule" && e.newValue) {
-        try { setBreakSchedule(JSON.parse(e.newValue)); } catch {}
+        try {
+          setBreakSchedule(JSON.parse(e.newValue));
+        } catch {}
       }
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
   // Shift window helper (supports shifts that cross midnight)
-  const shiftStartDate = useMemo(() => {
+  const getShiftWindow = (now: Date) => {
     if (!shiftStartStr) return null;
     const [h, m] = shiftStartStr.split(":").map((x) => parseInt(x, 10));
     if (isNaN(h) || isNaN(m)) return null;
 
-    const now = new Date();
-
     const startYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, h, m, 0, 0);
     const endYesterday = new Date(startYesterday.getTime() + 9 * 3600 * 1000);
-    if (now >= startYesterday && now <= endYesterday) return startYesterday;
+    if (now >= startYesterday && now <= endYesterday) {
+      return { start: startYesterday, end: endYesterday };
+    }
 
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
     const endToday = new Date(startToday.getTime() + 9 * 3600 * 1000);
-    if (now >= startToday && now <= endToday) return startToday;
+    if (now >= startToday && now <= endToday) {
+      return { start: startToday, end: endToday };
+    }
 
-    if (now < startToday) return startToday;
+    if (now < startToday) {
+      return { start: startToday, end: endToday };
+    }
 
     const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0, 0);
-    return startTomorrow;
-  }, [shiftStartStr, nextText]);
+    const endTomorrow = new Date(startTomorrow.getTime() + 9 * 3600 * 1000);
+    return { start: startTomorrow, end: endTomorrow };
+  };
 
-  const shiftEndDate = useMemo(() => {
-    if (!shiftStartDate) return null;
-    return new Date(shiftStartDate.getTime() + 9 * 3600 * 1000);
-  }, [shiftStartDate]);
+  const shiftWindow = useMemo(() => getShiftWindow(new Date()), [shiftStartStr]);
+  const shiftStartDate = shiftWindow?.start ?? null;
+  const shiftEndDate = shiftWindow?.end ?? null;
 
   const DURATIONS: Record<BreakKey, number> = { break1: 15 * 60, break2: 30 * 60, break3: 15 * 60 };
 
@@ -250,18 +274,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const computeCircleText = () => {
     const nowMs = Date.now();
 
+    const active = activeBreakInfo ?? readActiveBreakFromStorage();
+    if (active && (!activeBreakInfo || activeBreakInfo.start !== active.start || activeBreakInfo.key !== active.key)) {
+      // Update state so UI stays in sync; safe even if called from the interval
+      setActiveBreakInfo(active);
+    }
+
     // If a break is active, show break countdown
-    if (activeBreakInfo) {
-      const dur = DURATIONS[activeBreakInfo.key];
-      const elapsed = Math.floor((nowMs - activeBreakInfo.start) / 1000);
+    if (active) {
+      const dur = DURATIONS[active.key];
+      const elapsed = Math.floor((nowMs - active.start) / 1000);
       const left = Math.max(0, dur - elapsed);
       return `Break left ${formatHMS(left)}`;
     }
 
-    if (!shiftStartDate || !shiftEndDate) {
+    const now = new Date();
+    const window = getShiftWindow(now);
+    const start = window?.start ?? null;
+    const end = window?.end ?? null;
+
+    if (!start || !end) {
       // Fallback: no shift configured — show countdown to next scheduled break
-      const now = new Date();
-      const upcoming = (["break1", "break2", "break3"] as BreakKey[])
+      const upcoming = (['break1', 'break2', 'break3'] as BreakKey[])
         .map((k) => {
           const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
           let dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
@@ -269,14 +303,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
           return dt.getTime();
         })
         .sort((a, b) => a - b)[0];
+
       if (upcoming) {
         return `Next break in ${formatHMS(Math.max(0, Math.floor((upcoming - nowMs) / 1000)))}`;
       }
       return "";
     }
 
-    const startMs = shiftStartDate.getTime();
-    const endMs = shiftEndDate.getTime();
+    const startMs = start.getTime();
+    const endMs = end.getTime();
 
     // Before shift: countdown to shift start
     if (nowMs < startMs) {
@@ -293,9 +328,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const breaksInShift = (["break1", "break2", "break3"] as BreakKey[])
       .map((k) => {
         const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
-        // Break time relative to the current shift date
-        const dt = new Date(shiftStartDate.getFullYear(), shiftStartDate.getMonth(), shiftStartDate.getDate(), h || 0, m || 0, 0, 0);
-        // If break is before shift start time, it belongs to next day (overnight)
+        const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate(), h || 0, m || 0, 0, 0);
         if (dt.getTime() < startMs) dt.setDate(dt.getDate() + 1);
         return { key: k, start: dt.getTime() };
       })
