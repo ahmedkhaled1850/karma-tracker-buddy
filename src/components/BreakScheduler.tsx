@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Bell, Coffee, TimerReset, AlarmClockCheck, Save, Loader2 } from "lucide-react";
+import { Bell, Coffee, TimerReset, AlarmClockCheck, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -133,24 +133,21 @@ export const BreakScheduler = () => {
     loadSettings();
   }, [user]);
 
-  // Handle schedule changes
+  // Handle schedule changes with auto-save
   const handleScheduleChange = useCallback((key: BreakKey, value: string) => {
     setSchedule(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   }, []);
 
-  // Handle shift start change
+  // Handle shift start change with auto-save
   const handleShiftStartChange = useCallback((value: string) => {
     setShiftStart(value);
     setHasChanges(true);
   }, []);
 
-  // Save settings to database
-  const saveSettings = async () => {
-    if (!user) {
-      toast.error("Please log in first");
-      return;
-    }
+  // Auto-save settings to database
+  const autoSaveSettings = useCallback(async () => {
+    if (!user) return;
 
     setSaving(true);
     try {
@@ -186,27 +183,30 @@ export const BreakScheduler = () => {
         if (error) throw error;
       }
 
-      toast.success("Settings saved successfully");
       setHasChanges(false);
-      try {
-        localStorage.setItem("ktb_break_schedule", JSON.stringify(schedule));
-        if (shiftStart) {
-          localStorage.setItem("ktb_shift_start_time", shiftStart);
-        }
-        // Dispatch custom event for AppLayout to update immediately
-        window.dispatchEvent(new Event("ktb-schedule-updated"));
-      } catch {}
+      // Dispatch custom event for AppLayout to update immediately
+      window.dispatchEvent(new Event("ktb-schedule-updated"));
       clearScheduled();
       scheduleNotifications();
       scheduleAutoStart();
       scheduleShiftNotifications();
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast.error("Failed to save settings");
     } finally {
       setSaving(false);
     }
-  };
+  }, [user, schedule, shiftStart]);
+
+  // Auto-save on changes (debounced)
+  useEffect(() => {
+    if (!hasChanges || loading || initialLoadRef.current) return;
+    
+    const timeout = setTimeout(() => {
+      autoSaveSettings();
+    }, 1000);
+    
+    return () => clearTimeout(timeout);
+  }, [hasChanges, schedule, shiftStart, autoSaveSettings, loading]);
 
   useEffect(() => {
     localStorage.setItem("ktb_break_log", JSON.stringify(breakLog));
@@ -560,18 +560,9 @@ export const BreakScheduler = () => {
               <Bell className="mr-2 h-4 w-4" />
               {canNotify ? "Notifications On" : "Enable Notifications"}
             </Button>
-            <Button
-              variant="default"
-              onClick={saveSettings}
-              disabled={saving}
-            >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              Save Settings
-            </Button>
+            {saving && (
+              <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
+            )}
           </div>
         </div>
 
@@ -613,7 +604,7 @@ export const BreakScheduler = () => {
           ))}
         </div>
         <div className="mt-4 text-xs text-muted-foreground">
-          Breaks start automatically when the scheduled time arrives
+          Changes are saved automatically
         </div>
       </Card>
 

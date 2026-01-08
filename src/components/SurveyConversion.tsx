@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Save, Phone, Send, TrendingUp, CheckCircle, AlertTriangle } from "lucide-react";
+import { Phone, Send, TrendingUp, CheckCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -30,6 +29,8 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
   });
   const [monthlyData, setMonthlyData] = useState<DailySurveyData[]>([]);
   const [saving, setSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initializedRef = useRef(false);
 
   // Load today's data
   useEffect(() => {
@@ -49,6 +50,7 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
           surveys_sent: data.surveys_sent,
         });
       }
+      initializedRef.current = true;
     };
 
     if (userId) loadTodayData();
@@ -57,8 +59,8 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
   // Load monthly data
   useEffect(() => {
     const loadMonthlyData = async () => {
-      const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
-      const endDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-31`;
+      const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+      const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-31`;
 
       const { data, error } = await supabase
         .from("daily_survey_calls")
@@ -90,29 +92,29 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
     : 0;
   const isMonthlyMet = monthlyConversionRate >= 85;
 
-  const handleSave = async () => {
+  // Auto-save function
+  const autoSave = async (dataToSave: DailySurveyData) => {
+    if (saving) return;
     setSaving(true);
     try {
-      if (todayData.id) {
-        // Update existing
+      if (dataToSave.id) {
         const { error } = await supabase
           .from("daily_survey_calls")
           .update({
-            total_calls: todayData.total_calls,
-            surveys_sent: todayData.surveys_sent,
+            total_calls: dataToSave.total_calls,
+            surveys_sent: dataToSave.surveys_sent,
           })
-          .eq("id", todayData.id);
+          .eq("id", dataToSave.id);
 
         if (error) throw error;
       } else {
-        // Insert new
         const { data, error } = await supabase
           .from("daily_survey_calls")
           .insert({
             user_id: userId,
             call_date: todayStr,
-            total_calls: todayData.total_calls,
-            surveys_sent: todayData.surveys_sent,
+            total_calls: dataToSave.total_calls,
+            surveys_sent: dataToSave.surveys_sent,
           })
           .select()
           .single();
@@ -122,11 +124,10 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
           setTodayData(prev => ({ ...prev, id: data.id }));
         }
       }
-      toast.success("Survey data saved!");
       
       // Refresh monthly data
-      const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
-      const endDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-31`;
+      const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+      const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-31`;
       const { data: refreshed } = await supabase
         .from("daily_survey_calls")
         .select("*")
@@ -143,6 +144,25 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
     }
   };
 
+  // Auto-save on data change (debounced)
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(todayData);
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [todayData.total_calls, todayData.surveys_sent]);
+
   return (
     <Card className="p-6 border-border bg-card shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -150,10 +170,9 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
           <Phone className="h-5 w-5 text-primary" />
           Survey Conversion (85% Target)
         </h3>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4 mr-1" />
-          {saving ? "Saving..." : "Save"}
-        </Button>
+        {saving && (
+          <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -236,7 +255,7 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
             <TrendingUp className="h-4 w-4" />
-            Monthly Summary ({selectedMonth}/{selectedYear})
+            Monthly Summary ({selectedMonth + 1}/{selectedYear})
           </h4>
 
           <div className="rounded-lg border p-4 space-y-3">
