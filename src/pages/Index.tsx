@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Save, Plus, Minus, LogOut, User, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
+import { Download, Plus, Minus, LogOut, User, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
  
 import { MetricCard } from "@/components/MetricCard";
@@ -687,12 +687,7 @@ const Index = () => {
     }
   };
 
-  // Auto-save preferences
-  const autosaveMode = (user?.user_metadata as Record<string, unknown> | undefined)?.autosaveMode as
-    | "manual"
-    | "immediate"
-    | "hourly"
-    | undefined;
+  // Auto-save is ALWAYS enabled - save automatically after any data change
   const [initialized, setInitialized] = useState(false);
   useEffect(() => {
     // Mark initialized once initial data load completes
@@ -702,21 +697,9 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previousData]);
 
-  // Auto-save hourly
+  // Auto-save after changes (debounced) - ALWAYS active
   useEffect(() => {
-    if (autosaveMode !== "hourly" || !initialized) return;
-    const interval = setInterval(() => {
-      if (!isSaving) {
-        saveToDatabase();
-      }
-    }, 60 * 60 * 1000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autosaveMode, initialized]);
-
-  // Auto-save after changes (debounced)
-  useEffect(() => {
-    if (autosaveMode !== "immediate" || !initialized) return;
+    if (!initialized) return;
     const timeout = setTimeout(() => {
       if (!isSaving) {
         saveToDatabase();
@@ -724,7 +707,7 @@ const Index = () => {
     }, 1500);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autosaveMode, initialized, data, genesysTickets]);
+  }, [initialized, data, genesysTickets]);
 
   const updateMetric = useCallback(
     (field: keyof Pick<MonthlyData, "good" | "bad" | "karmaBad">, increment: boolean) => {
@@ -1122,14 +1105,9 @@ const Index = () => {
               <p className="text-base text-muted-foreground">The big brother who will care for you at work and help you</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                onClick={saveToDatabase} 
-                disabled={isSaving}
-                size="lg"
-              >
-                <Save className="mr-2 h-5 w-5" /> 
-                {isSaving ? 'Saving...' : 'Save All'}
-              </Button>
+              {isSaving && (
+                <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
+              )}
               <Button onClick={exportToCSV} variant="outline" size="lg">
                 <Download className="mr-2 h-5 w-5" /> Export CSV
               </Button>
