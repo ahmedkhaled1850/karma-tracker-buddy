@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Clock, TrendingUp, Calendar, Star } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 interface DailyChange {
   id: string;
@@ -18,7 +19,9 @@ interface BestProductiveTimeProps {
 interface HourStats {
   hour: number;
   goodCount: number;
+  badCount?: number;
   totalCount: number;
+  successRate: number;
   label: string;
 }
 
@@ -31,6 +34,13 @@ interface DayStats {
 }
 
 export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
+  const [includeGenesys, setIncludeGenesys] = useState(true);
+  const [includeKarma, setIncludeKarma] = useState(true);
+  const MIN_SAMPLES = 5;
+  const reminderTimeouts = useRef<number[]>([]);
+  useEffect(() => {
+    return () => { reminderTimeouts.current.forEach((id) => window.clearTimeout(id)); reminderTimeouts.current = []; };
+  }, []);
   const analysis = useMemo(() => {
     if (!changes || changes.length === 0) {
       return null;
@@ -44,11 +54,20 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
     const dateStats: Record<string, { good: number; bad: number }> = {};
 
     changes.forEach((change) => {
+      const isGenesys = change.field_name === 'genesys_good' || change.field_name === 'genesys_bad';
+      const isKarma = change.field_name === 'karma_bad';
+      if (!includeGenesys && isGenesys) return;
+      if (!includeKarma && isKarma) return;
       const isGood = change.field_name === 'good' || change.field_name === 'genesys_good';
       const isBad = change.field_name === 'bad' || change.field_name === 'genesys_bad' || change.field_name === 'karma_bad';
       const amount = Math.max(0, change.change_amount);
-
       if (amount === 0) return;
+      let weight = 1;
+      try {
+        const d = new Date(change.change_date);
+        const daysAgo = Math.floor((new Date().getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+        weight = daysAgo <= 7 ? 1.5 : 1;
+      } catch {}
 
       // Get time from change_time or created_at
       let hour = 12; // default
@@ -64,14 +83,14 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
 
       // Update hour stats
       if (!hourStats[hour]) hourStats[hour] = { good: 0, bad: 0, total: 0 };
-      if (isGood) hourStats[hour].good += amount;
-      if (isBad) hourStats[hour].bad += amount;
-      hourStats[hour].total += amount;
+      if (isGood) hourStats[hour].good += amount * weight;
+      if (isBad) hourStats[hour].bad += amount * weight;
+      hourStats[hour].total += amount * weight;
 
       // Update day of week stats
       if (!dayOfWeekStats[dayOfWeek]) dayOfWeekStats[dayOfWeek] = { good: 0, total: 0 };
-      if (isGood) dayOfWeekStats[dayOfWeek].good += amount;
-      dayOfWeekStats[dayOfWeek].total += amount;
+      if (isGood) dayOfWeekStats[dayOfWeek].good += amount * weight;
+      dayOfWeekStats[dayOfWeek].total += amount * weight;
 
       // Update date stats
       const dateKey = change.change_date;
@@ -82,25 +101,44 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
 
     // Find best hours (top 3)
     const bestHours: HourStats[] = Object.entries(hourStats)
-      .map(([hour, stats]) => ({
-        hour: parseInt(hour),
-        goodCount: stats.good,
-        totalCount: stats.total,
-        label: `${parseInt(hour).toString().padStart(2, '0')}:00`,
-      }))
-      .filter(h => h.goodCount > 0)
-      .sort((a, b) => b.goodCount - a.goodCount)
+      .map(([hour, stats]) => {
+        const total = stats.total;
+        const good = stats.good;
+        const rate = total > 0 ? good / total : 0;
+        return {
+          hour: parseInt(hour, 10),
+          goodCount: good,
+          badCount: stats.bad,
+          totalCount: total,
+          successRate: rate,
+          label: `${parseInt(hour, 10).toString().padStart(2, '0')}:00`,
+        };
+      })
+      .filter(h => h.totalCount >= MIN_SAMPLES)
+      .sort((a, b) => (b.successRate - a.successRate) || (b.goodCount - a.goodCount))
       .slice(0, 3);
     
     const worstHours: HourStats[] = Object.entries(hourStats)
-      .map(([hour, stats]) => ({
-        hour: parseInt(hour),
-        goodCount: stats.bad,
-        totalCount: stats.total,
-        label: `${parseInt(hour).toString().padStart(2, '0')}:00`,
-      }))
-      .filter(h => h.goodCount > 0)
-      .sort((a, b) => b.goodCount - a.goodCount)
+      .map(([hour, stats]) => {
+        const total = stats.total;
+        const bad = stats.bad;
+        const rateBad = total > 0 ? bad / total : 0;
+        return {
+          hour: parseInt(hour, 10),
+          goodCount: stats.good,
+          badCount: bad,
+          totalCount: total,
+          successRate: rateBad,
+          label: `${parseInt(hour, 10).toString().padStart(2, '0')}:00`,
+        };
+      })
+      .filter(h => (h.badCount ?? 0) > 0 && h.totalCount >= MIN_SAMPLES)
+      .sort((a, b) => {
+        const ar = a.badCount ? a.badCount / a.totalCount : 0;
+        const br = b.badCount ? b.badCount / b.totalCount : 0;
+        if (br !== ar) return br - ar;
+        return (b.badCount || 0) - (a.badCount || 0);
+      })
       .slice(0, 3);
 
     // Find best days of week
@@ -113,8 +151,8 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
         totalCount: stats.total,
         successRate: stats.total > 0 ? (stats.good / stats.total) * 100 : 0,
       }))
-      .filter(d => d.goodCount > 0)
-      .sort((a, b) => b.goodCount - a.goodCount)
+      .filter(d => d.totalCount >= MIN_SAMPLES)
+      .sort((a, b) => (b.successRate - a.successRate) || (b.goodCount - a.goodCount))
       .slice(0, 3);
 
     // Find best dates in the month
@@ -137,7 +175,7 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
       totalGoodRatings: Object.values(hourStats).reduce((sum, h) => sum + h.good, 0),
       worstHours,
     };
-  }, [changes]);
+  }, [changes, includeGenesys, includeKarma]);
 
   if (!analysis) {
     return (
@@ -163,6 +201,46 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
         <h3 className="text-lg font-semibold text-foreground">Best Productive Time</h3>
       </div>
 
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3 text-xs">
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={includeGenesys} onChange={(e) => setIncludeGenesys(e.target.checked)} />
+            <span>Include Genesys</span>
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={includeKarma} onChange={(e) => setIncludeKarma(e.target.checked)} />
+            <span>Include Karma</span>
+          </label>
+        </div>
+        <button
+          className="text-xs px-2 py-1 rounded border"
+          onClick={() => {
+            toast.message("Setting reminder…");
+            // Schedule 10 minutes before next best hour
+            const now = new Date();
+            const bh = analysis?.bestHours?.[0];
+            if (!bh) { toast.error("No best hour yet"); return; }
+            const topHour = parseInt(bh.label.split(":")[0], 10);
+            const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), topHour, 0, 0, 0);
+            if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
+            const ms = target.getTime() - Date.now() - 10 * 60 * 1000;
+            if (ms > 0) {
+              const id = window.setTimeout(() => {
+                toast.message("Golden hour soon", { description: `Best hour at ${bh.label} in 10 min` });
+                if ("Notification" in window && Notification.permission === "granted") {
+                  try { new Notification("Golden hour soon", { body: `Best hour at ${bh.label}` }); } catch {}
+                }
+              }, ms);
+              reminderTimeouts.current.push(id);
+              toast.success("Reminder set for best hour");
+            } else {
+              toast.message("Too close to best hour");
+            }
+          }}
+        >
+          Enable reminder
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Best Hours */}
         <div className="space-y-3">
@@ -179,7 +257,7 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-foreground">{hour.label}</span>
-                    <span className="text-sm text-primary font-bold">+{hour.goodCount} good</span>
+                    <span className="text-sm text-primary font-bold">+{Math.round(hour.goodCount)} good • {Math.round(hour.successRate * 100)}% • ({Math.round(hour.totalCount)})</span>
                   </div>
                   {idx === 0 && (
                     <p className="text-xs text-muted-foreground mt-1">Your peak productivity hour</p>
@@ -207,7 +285,7 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-foreground">{hour.label}</span>
-                    <span className="text-sm text-destructive font-bold">+{hour.goodCount} bad</span>
+                    <span className="text-sm text-destructive font-bold">+{Math.round(hour.badCount || 0)} bad</span>
                   </div>
                   {idx === 0 && (
                     <p className="text-xs text-muted-foreground mt-1">Highest DSAT hour</p>

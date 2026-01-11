@@ -24,6 +24,7 @@ export const TicketsTable = ({ tickets, onTicketsChange }: TicketsTableProps) =>
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "DSAT" | "Karma">("ALL");
+  const [showAll, setShowAll] = useState(false); // show all tickets toggle
   
   const addTicket = () => {
     const newTicket: Ticket = {
@@ -57,6 +58,8 @@ export const TicketsTable = ({ tickets, onTicketsChange }: TicketsTableProps) =>
       return matchesSearch && matchesType;
     });
   }, [tickets, searchQuery, filterType]);
+
+  const visibleTickets = showAll ? filteredTickets : filteredTickets.slice(0, 2); // show 2 by default
 
   const channelStats = () => {
     const total = tickets.length;
@@ -145,7 +148,7 @@ export const TicketsTable = ({ tickets, onTicketsChange }: TicketsTableProps) =>
           )}
 
           <div className="space-y-3">
-        {filteredTickets.map((ticket) => (
+        {visibleTickets.map((ticket) => (
           <div key={ticket.id} className="p-4 bg-muted/30 hover:bg-muted/50 transition-colors rounded-xl border border-border/50 space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
@@ -226,6 +229,14 @@ export const TicketsTable = ({ tickets, onTicketsChange }: TicketsTableProps) =>
             </div>
           </div>
         ))}
+
+        {filteredTickets.length > 2 && (
+          <div className="text-center mt-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowAll((s) => !s)}>
+              {showAll ? `Show less` : `Show all (${filteredTickets.length})`}
+            </Button>
+          </div>
+        )}
       </div>
 
       {tickets.length === 0 && (

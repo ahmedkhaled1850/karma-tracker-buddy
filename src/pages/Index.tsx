@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Download, Plus, Minus, LogOut, User, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
  
@@ -24,6 +27,8 @@ import { MonthEndForecast } from "@/components/MonthEndForecast";
 import SurveyConversion from "@/components/SurveyConversion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ThreeMonthPhoneAnalytics, PhoneMonthData } from "@/components/ThreeMonthPhoneAnalytics";
 
 interface WeeklyData {
   week: number;
@@ -51,6 +56,11 @@ interface MonthlyData {
   fcr: number;
   tickets: Ticket[];
   goodByChannel: {
+    phone: number;
+    chat: number;
+    email: number;
+  };
+  badByChannel?: {
     phone: number;
     chat: number;
     email: number;
@@ -116,6 +126,7 @@ const Index = () => {
     fcr: 0,
     tickets: [],
     goodByChannel: { phone: 0, chat: 0, email: 0 },
+    badByChannel: { phone: 0, chat: 0, email: 0 },
   });
 
   const [previousData, setPreviousData] = useState<MonthlyData | null>(null);
@@ -123,9 +134,33 @@ const Index = () => {
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
   const [genesysTickets, setGenesysTickets] = useState<GenesysTicket[]>([]);
   const [offDays, setOffDays] = useState<number[] | null>(null);
-  const [monthlyChanges, setMonthlyChanges] = useState<any[]>([]);
+  const [monthlyChangeLog, setMonthlyChangeLog] = useState<any[]>([]);
   const [shiftStartTime, setShiftStartTime] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
+  const [selectedThreeMonths, setSelectedThreeMonths] = useState<Array<{ month: number; year: number }>>(() => {
+    const now = new Date();
+    const m = now.getMonth();
+    const y = now.getFullYear();
+    const prev1Month = m - 1 < 0 ? 11 : m - 1;
+    const prev1Year = m - 1 < 0 ? y - 1 : y;
+    const prev2Month = m - 2 < 0 ? (12 + (m - 2)) : m - 2;
+    const prev2Year = m - 2 < 0 ? y - 1 : y;
+    return [
+      { month: m, year: y },
+      { month: prev1Month, year: prev1Year },
+      { month: prev2Month, year: prev2Year },
+    ];
+  });
+  const [threeMonthsMetrics, setThreeMonthsMetrics] = useState<Array<{ month: number; year: number; csat: number; karma: number; fcr: number; totalGood: number; totalSurveys: number; totalKarmaBase: number; phoneGood: number; phoneBad: number; phoneKarma: number; chatGood: number; chatBad: number; emailGood: number; emailBad: number }>>([]);
+  const [phoneMonthData, setPhoneMonthData] = useState<PhoneMonthData[]>([]);
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["csat", "phone", "karma", "fcr"]);
+
+  // 3-month comparison UI state
+  const [includeKarmaInCSAT, setIncludeKarmaInCSAT] = useState<boolean>(false);
+  const [selectedChannelForComparison, setSelectedChannelForComparison] = useState<'all' | 'phone' | 'chat' | 'email'>('phone');
+  const [compareCount, setCompareCount] = useState<2 | 3>(3);
+  const [threeMonthsWarning, setThreeMonthsWarning] = useState<string | null>(null);
+  const [threeMonthsDebug, setThreeMonthsDebug] = useState<Record<string, any> | null>(null);
 
   // IMPORTANT: Do NOT auto-reconcile counters from tickets/genesys lists.
   // This was causing cascaded changes (+10 then -9, etc.) and polluting the Daily Change Log.
@@ -199,6 +234,11 @@ const Index = () => {
       loadPreviousMonthData();
     }
   }, [selectedMonth, selectedYear, user]);
+  useEffect(() => {
+    if (user) {
+      loadSelectedMonthsData();
+    }
+  }, [selectedThreeMonths, user, includeKarmaInCSAT, compareCount]);
 
   const loadMonthData = async () => {
     if (!user) return;
@@ -225,9 +265,14 @@ const Index = () => {
           genesysBad: perfData.genesys_bad || 0,
           fcr: typeof (perfData as any).fcr === 'number' ? (perfData as any).fcr : 0,
           goodByChannel: {
-            phone: perfData.good_phone || 0,
-            chat: perfData.good_chat || 0,
-            email: perfData.good_email || 0,
+            phone: (perfData as any).good_phone || 0,
+            chat: (perfData as any).good_chat || 0,
+            email: (perfData as any).good_email || 0,
+          },
+          badByChannel: {
+            phone: (perfData as any).bad_phone || 0,
+            chat: (perfData as any).bad_chat || 0,
+            email: (perfData as any).bad_email || 0,
           },
           tickets: (perfData.tickets || []).map((t: any) => ({
             id: t.id,
@@ -245,7 +290,7 @@ const Index = () => {
         
         // Load today's stats from daily changes
         await loadTodayStats(perfData.id);
-        await loadMonthlyChanges(perfData.id);
+        await loadMonthlyChangeLog(perfData.id);
         
         // Load Genesys tickets
         const { data: genesysTicketsFromDB, error: genesysError } = await supabase
@@ -264,23 +309,57 @@ const Index = () => {
             channel: ((t as any).channel as "Phone" | "Chat" | "Email") || "Phone",
             note: (t as any).note || "",
           }));
-          try {
-            const overridesStr = localStorage.getItem("ktb_genesys_ticket_overrides");
-            if (overridesStr) {
-              const overrides: Record<string, Partial<GenesysTicket>> = JSON.parse(overridesStr);
-              const merged = loaded.map(gt => {
-                const key = gt.id || `${gt.ticketLink}-${gt.ticketDate}`;
-                const ov = overrides[key];
-                return ov ? { ...gt, ...ov } : gt;
+          
+          // Auto-create tickets for good ratings that don't have one
+          const goodRatings = loadedData.good;
+          if (loaded.length < goodRatings) {
+            const newTickets: GenesysTicket[] = [];
+            for (let i = 0; i < goodRatings - loaded.length; i++) {
+              newTickets.push({
+                ticketLink: "",
+                ratingScore: 7, // Default good score
+                customerPhone: "",
+                ticketDate: new Date().toISOString().split('T')[0],
+                channel: "Phone",
+                note: "Auto-created from good rating log",
               });
-              setGenesysTickets(merged);
-            } else {
-              setGenesysTickets(loaded);
             }
-          } catch {
+            onGenesysTicketsChange([...loaded, ...newTickets]);
+          } else {
             setGenesysTickets(loaded);
           }
+
+          // Recalculate good/bad by channel from the tickets themselves
+          let genesysGood = 0;
+          let genesysBad = 0;
+          const goodByChannel = { phone: 0, chat: 0, email: 0 };
+          const badByChannel = { phone: 0, chat: 0, email: 0 };
+
+          for (const t of loaded) {
+            const isGood = t.ratingScore >= 7 && t.ratingScore <= 9;
+            const channel = t.channel?.toLowerCase() || 'phone';
+            if (isGood) {
+              genesysGood++;
+              if (channel === 'phone') goodByChannel.phone++;
+              else if (channel === 'chat') goodByChannel.chat++;
+              else if (channel === 'email') goodByChannel.email++;
+            } else {
+              genesysBad++;
+              if (channel === 'phone') badByChannel.phone++;
+              else if (channel === 'chat') badByChannel.chat++;
+              else if (channel === 'email') badByChannel.email++;
+            }
+          }
+          
+          setData(prev => ({
+            ...prev,
+            genesysGood,
+            genesysBad,
+            goodByChannel,
+            badByChannel,
+          }));
         }
+
       } else {
         // No data for this month, reset to empty
         setPerformanceId(null);
@@ -294,6 +373,7 @@ const Index = () => {
           fcr: 0,
           tickets: [],
           goodByChannel: { phone: 0, chat: 0, email: 0 },
+          badByChannel: { phone: 0, chat: 0, email: 0 },
         };
         setData(emptyData);
         setPreviousData(emptyData);
@@ -307,7 +387,168 @@ const Index = () => {
     }
   };
 
-  const loadMonthlyChanges = async (perfId: string) => {
+  const loadSelectedMonthsData = async () => {
+    if (!user) return;
+    try {
+      // Only fetch the months that are used for comparison (2 or 3)
+      const monthsToFetch = selectedThreeMonths.slice(0, compareCount);
+      const failedMonths: string[] = [];
+      const settled = await Promise.allSettled(
+        monthsToFetch.map(async (sel) => {
+          try {
+            const { data: perfData } = await supabase
+              .from('performance_data')
+              .select('*, good_phone, bad_phone, good_chat, bad_chat, good_email, bad_email, karma_bad, genesys_good, genesys_bad, fcr')
+              .eq('year', sel.year)
+              .eq('month', sel.month)
+              .eq('user_id', user.id)
+              .maybeSingle();
+            let perfSel = perfData as any;
+
+            // If nothing found try 1-based month (some rows might store months as 1-12)
+            if (!perfSel) {
+              const altMonth = sel.month + 1;
+              try {
+                const { data: perfDataAlt } = await supabase
+                  .from('performance_data')
+                  .select('*, good_phone, bad_phone, good_chat, bad_chat, good_email, bad_email, karma_bad, genesys_good, genesys_bad, fcr')
+                  .eq('year', sel.year)
+                  .eq('month', altMonth)
+                  .eq('user_id', user.id)
+                  .maybeSingle();
+                if (perfDataAlt) {
+                  perfSel = perfDataAlt as any;
+                  console.warn(`Loaded performance_data using 1-based month for ${sel.month}/${sel.year} (query month=${altMonth})`);
+                }
+              } catch (altErr) {
+                console.warn('Error while attempting alternate month fetch', altErr);
+              }
+            }
+
+            if (!perfSel) {
+              failedMonths.push(`${sel.month}/${sel.year}`);
+              // return zeroed object but keep month/year so the UI shows the month
+              return {
+                month: sel.month,
+                year: sel.year,
+                csat: 0,
+                karma: 0,
+                fcr: 0,
+                totalGood: 0,
+                totalSurveys: 0,
+                totalKarmaBase: 0,
+                phoneGood: 0,
+                phoneBad: 0,
+                phoneKarma: 0,
+                chatGood: 0,
+                chatBad: 0,
+                emailGood: 0,
+                emailBad: 0,
+              };
+            }
+
+            const good = Number(perfSel.good || 0);
+            const bad = Number(perfSel.bad || 0);
+            const karmaBad = Number(perfSel.karma_bad || 0);
+            const genesysGood = Number(perfSel.genesys_good || 0);
+            const genesysBad = Number(perfSel.genesys_bad || 0);
+            const fcrVal = typeof perfSel?.fcr === 'number' ? perfSel.fcr : Number(perfSel?.fcr || 0);
+
+            const phoneGoodSel = Number(perfSel.good_phone || 0);
+            const phoneBadSel = Number(perfSel.bad_phone || 0);
+            const chatGoodSel = Number(perfSel.good_chat || 0);
+            const chatBadSel = Number(perfSel.bad_chat || 0);
+            const emailGoodSel = Number(perfSel.good_email || 0);
+            const emailBadSel = Number(perfSel.bad_email || 0);
+            const phoneKarmaSel = Number(perfSel.karma_bad || 0); // per-channel karma not stored, use global karma as approximation
+
+            const totalGoodSel = good + genesysGood;
+            const totalBadSel = bad + genesysBad;
+            const totalSurveysSel = totalGoodSel + totalBadSel + (includeKarmaInCSAT ? karmaBad : 0);
+            const totalKarmaBaseSel = totalGoodSel + totalBadSel + karmaBad;
+
+            const csatSel = totalSurveysSel > 0 ? (totalGoodSel / totalSurveysSel) * 100 : 0;
+            const karmaSel = totalKarmaBaseSel > 0 ? (totalGoodSel / totalKarmaBaseSel) * 100 : 0;
+
+            return {
+              month: sel.month,
+              year: sel.year,
+              csat: csatSel,
+              karma: karmaSel,
+              fcr: fcrVal,
+              totalGood: totalGoodSel,
+              totalSurveys: totalSurveysSel,
+              totalKarmaBase: totalKarmaBaseSel,
+              phoneGood: phoneGoodSel,
+              phoneBad: phoneBadSel,
+              phoneKarma: phoneKarmaSel,
+              chatGood: chatGoodSel,
+              chatBad: chatBadSel,
+              emailGood: emailGoodSel,
+              emailBad: emailBadSel,
+            };
+          } catch (err) {
+            console.warn('Error fetching month', sel, err);
+            failedMonths.push(`${sel.month}/${sel.year}`);
+            return {
+              month: sel.month,
+              year: sel.year,
+              csat: 0,
+              karma: 0,
+              fcr: 0,
+              totalGood: 0,
+              totalSurveys: 0,
+              totalKarmaBase: 0,
+              phoneGood: 0,
+              phoneBad: 0,
+              phoneKarma: 0,
+              chatGood: 0,
+              chatBad: 0,
+              emailGood: 0,
+              emailBad: 0,
+            };
+          }
+        })
+      );
+
+      // Extract values while preserving order
+      const results: any[] = settled.map((s, i) => {
+        if (s.status === 'fulfilled') return s.value;
+        // Shouldn't happen because we return from catch, but handle for safety
+        return {
+          month: monthsToFetch[i].month,
+          year: monthsToFetch[i].year,
+          csat: 0,
+          karma: 0,
+          fcr: 0,
+          totalGood: 0,
+          totalSurveys: 0,
+          totalKarmaBase: 0,
+          phoneGood: 0,
+          phoneBad: 0,
+          phoneKarma: 0,
+          chatGood: 0,
+          chatBad: 0,
+          emailGood: 0,
+          emailBad: 0,
+        };
+      });
+
+      setThreeMonthsMetrics(results);
+      setThreeMonthsDebug({ computed: results });
+
+      if (failedMonths.length > 0) {
+        setThreeMonthsWarning(`No data found for: ${failedMonths.join(', ')} (tried 0-based and 1-based months).`);
+      } else {
+        setThreeMonthsWarning(null);
+      }
+    } catch (e) {
+      console.error('Error loading selected months:', e);
+      setThreeMonthsMetrics([]);
+    }
+  };
+
+  const loadMonthlyChangeLog = async (perfId: string) => {
     try {
       const { data: changes, error } = await supabase
         .from('daily_changes')
@@ -315,9 +556,9 @@ const Index = () => {
         .eq('performance_id', perfId)
         .order('created_at');
       if (error) throw error;
-      setMonthlyChanges(changes || []);
+      setMonthlyChangeLog(changes || []);
     } catch (e) {
-      setMonthlyChanges([]);
+      setMonthlyChangeLog([]);
     }
   };
 
@@ -386,8 +627,8 @@ const Index = () => {
     if (
       performanceId &&
       !hasRestored &&
-      monthlyChanges &&
-      monthlyChanges.length > 0 &&
+      monthlyChangeLog &&
+      monthlyChangeLog.length > 0 &&
       data.good === 0 &&
       data.bad === 0 &&
       data.karmaBad === 0 &&
@@ -396,7 +637,7 @@ const Index = () => {
     ) {
       restoreFromDailyChanges();
     }
-  }, [performanceId, monthlyChanges, data, hasRestored]);
+  }, [performanceId, monthlyChangeLog, data, hasRestored]);
 
   const loadTodayStats = async (perfId: string) => {
     try {
@@ -460,9 +701,9 @@ const Index = () => {
           genesysBad: perfData.genesys_bad || 0,
           fcr: typeof (perfData as any).fcr === 'number' ? (perfData as any).fcr : 0,
           goodByChannel: {
-            phone: perfData.good_phone || 0,
-            chat: perfData.good_chat || 0,
-            email: perfData.good_email || 0,
+            phone: (perfData as any).good_phone || 0,
+            chat: (perfData as any).good_chat || 0,
+            email: (perfData as any).good_email || 0,
           },
           tickets: [],
         });
@@ -979,20 +1220,11 @@ const Index = () => {
     return counts;
   }, [genesysTickets]);
 
-  const badByChannel = useMemo(() => {
-    const base = { phone: 0, chat: 0, email: 0 };
-    data.tickets.forEach(ticket => {
-      if (ticket.type === "DSAT") {
-        const ch = ticket.channel.toLowerCase() as keyof typeof base;
-        base[ch] += 1;
-      }
-    });
-    return {
-      phone: base.phone + genesysBadByChannel.phone,
-      chat: base.chat + genesysBadByChannel.chat,
-      email: base.email + genesysBadByChannel.email,
-    };
-  }, [data.tickets, genesysBadByChannel]);
+  const badByChannel = useMemo(() => ({
+    phone: genesysBadByChannel.phone,
+    chat: genesysBadByChannel.chat,
+    email: genesysBadByChannel.email,
+  }), [genesysBadByChannel]);
 
   const karmaByChannel = useMemo(() => data.tickets.reduce(
     (acc, ticket) => {
@@ -1020,12 +1252,12 @@ const Index = () => {
   }, [totalGood, totalBad, data.karmaBad]);
   
   const insights = useMemo(() => {
-    if (!monthlyChanges || monthlyChanges.length === 0) {
+    if (!monthlyChangeLog || monthlyChangeLog.length === 0) {
       return { bestHour: null, forecastKarma: null };
     }
     const byHour: Record<string, number> = {};
     const dayAgg: Record<string, { good: number; bad: number }> = {};
-    monthlyChanges.forEach((c: any) => {
+    monthlyChangeLog.forEach((c: any) => {
       const isGood = c.field_name === 'good' || c.field_name === 'genesys_good';
       const isBad = c.field_name === 'bad' || c.field_name === 'genesys_bad' || c.field_name === 'karma_bad';
       const dt = c.created_at ? new Date(c.created_at) : new Date(c.change_date);
@@ -1051,7 +1283,7 @@ const Index = () => {
     const base = projectedGood + projectedBad + data.karmaBad;
     const forecastKarma = base > 0 ? (projectedGood / base) * 100 : null;
     return { bestHour, forecastKarma };
-  }, [monthlyChanges, remainingWorkingDays, totalGood, totalBad, data.karmaBad]);
+  }, [monthlyChangeLog, remainingWorkingDays, totalGood, totalBad, data.karmaBad]);
 
   const exportToCSV = () => {
     const monthName = new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long" });
@@ -1085,6 +1317,37 @@ const Index = () => {
     a.click();
     toast.success("CSV exported successfully!");
   };
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchData = async () => {
+      const results: PhoneMonthData[] = [];
+      for (const { month, year } of selectedThreeMonths) {
+        try {
+          const { data: perfData, error } = await supabase
+            .from('performance_data')
+            .select('good_phone,bad_phone,karma_bad')
+            .eq('user_id', user.id)
+            .eq('year', year)
+            .eq('month', month)
+            .maybeSingle();
+          if (error) throw error;
+          if (perfData) {
+            results.push({
+              month: new Date(year, month).toLocaleString('en-US', { month: 'long' }),
+              good: (perfData as any).good_phone || 0,
+              bad: (perfData as any).bad_phone || 0,
+              karma: (perfData as any).karma_bad || 0,
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load phone KPI for', month, year, e);
+        }
+      }
+      setPhoneMonthData(results);
+    };
+    fetchData();
+  }, [selectedThreeMonths, user]);
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
@@ -1210,6 +1473,8 @@ const Index = () => {
                 previousValue={previousMonthData?.fcr}
               />
             </div>
+            
+
           </div>
           )}
 
@@ -1274,7 +1539,7 @@ const Index = () => {
               />
               
               {/* Best Productive Time */}
-              <BestProductiveTime changes={monthlyChanges} />
+              <BestProductiveTime changes={monthlyChangeLog} />
 
               {/* Month-end Forecast */}
               <MonthEndForecast
@@ -1283,7 +1548,7 @@ const Index = () => {
                 karmaBad={data.karmaBad}
                 remainingWorkDays={remainingWorkingDays}
                 previousMonthData={previousMonthData}
-                dailyChanges={monthlyChanges}
+                dailyChanges={monthlyChangeLog}
                 selectedMonth={selectedMonth}
                 selectedYear={selectedYear}
               />
@@ -1298,6 +1563,234 @@ const Index = () => {
                   karmaRatings={karmaByChannel}
                   totalGood={totalGood}
                 />
+
+              {/* 3-Month Performance (moved from Overview) */}
+              <div className="space-y-6 animate-fade-in mt-6">
+                <h2 className="text-2xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">📅 3-Month Performance</h2>
+                {threeMonthsWarning && (
+                  <div className="space-y-2">
+                    <div className="text-sm text-destructive">{threeMonthsWarning}</div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="ghost" onClick={async () => {
+                        // Create empty rows for missing months
+                        const missing = threeMonthsWarning.match(/No data found for: (.*) \(tried/);
+                        if (!missing) return;
+                        const months = missing[1].split(',').map(s => s.trim());
+                        for (const m of months) {
+                          const [monthStr, yearStr] = m.split('/');
+                          const monthNum = Number(monthStr);
+                          const yearNum = Number(yearStr);
+                          try {
+                            await supabase.from('performance_data').insert({ year: yearNum, month: monthNum, user_id: user.id });
+                            toast.success(`Created empty record for ${monthNum}/${yearNum}`);
+                          } catch (err) {
+                            console.warn('Error creating empty month record', err);
+                            toast.error('Failed creating empty month record');
+                          }
+                        }
+                        await loadSelectedMonthsData();
+                      }}>
+                        Create empty month(s)
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={async () => {
+                        // Fetch raw records for the months (0-based then 1-based)
+                        const missing = threeMonthsWarning.match(/No data found for: (.*) \(tried/);
+                        if (!missing) return;
+                        const months = missing[1].split(',').map(s => s.trim());
+                        const debugResults: Record<string, any> = {};
+                        for (const m of months) {
+                          const [monthStr, yearStr] = m.split('/');
+                          const mNum = Number(monthStr);
+                          const yNum = Number(yearStr);
+                          const { data: r0 } = await supabase.from('performance_data').select('*').eq('year', yNum).eq('month', mNum).eq('user_id', user.id).maybeSingle();
+                          const { data: r1 } = await supabase.from('performance_data').select('*').eq('year', yNum).eq('month', mNum + 1).eq('user_id', user.id).maybeSingle();
+                          debugResults[`${mNum}/${yNum}`] = { r0, r1 };
+                        }
+                        // Store in state for display
+                        setThreeMonthsDebug(debugResults);
+                      }}>
+                        Inspect raw data
+                      </Button>
+                    </div>
+                    {threeMonthsDebug && (
+                      <pre className="p-2 mt-2 text-xs bg-surface rounded">{JSON.stringify(threeMonthsDebug, null, 2)}</pre>
+                    )}
+                  </div>
+                )}
+                <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">اختر الشهور والمعايير المراد عرضها</p>
+                    <div className="mt-2">
+                      <ToggleGroup type="multiple" value={selectedMetrics} onValueChange={(v) => setSelectedMetrics(v as string[])}>
+                        <ToggleGroupItem value="csat">CSAT</ToggleGroupItem>
+                        <ToggleGroupItem value="phone">Phone</ToggleGroupItem>
+                        <ToggleGroupItem value="karma">Karma</ToggleGroupItem>
+                        <ToggleGroupItem value="fcr">FCR</ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={includeKarmaInCSAT} onCheckedChange={(v) => setIncludeKarmaInCSAT(Boolean(v))} />
+                      <span className="text-sm text-muted-foreground">ضمّ Karma في CSAT</span>
+                    </div>
+
+                    <Select value={selectedChannelForComparison} onValueChange={(v) => setSelectedChannelForComparison(v as any)}>
+                      <SelectTrigger className="w-40 bg-background">
+                        <SelectValue placeholder="Channel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Channels</SelectItem>
+                        <SelectItem value="phone">Phone</SelectItem>
+                        <SelectItem value="chat">Chat</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm text-muted-foreground">Compare</label>
+                      <RadioGroup value={String(compareCount)} onValueChange={(v) => setCompareCount(v === '2' ? 2 : 3)}>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="2" className="h-4 w-4" />
+                          <span className="text-sm">2</span>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          <RadioGroupItem value="3" className="h-4 w-4" />
+                          <span className="text-sm">3</span>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <Button size="sm" variant="secondary" onClick={() => {
+                      const now = new Date();
+                      const m = now.getMonth();
+                      const y = now.getFullYear();
+                      const prev1Month = m - 1 < 0 ? 11 : m - 1;
+                      const prev1Year = m - 1 < 0 ? y - 1 : y;
+                      const prev2Month = m - 2 < 0 ? (12 + (m - 2)) : m - 2;
+                      const prev2Year = m - 2 < 0 ? y - 1 : y;
+                      setSelectedThreeMonths([{ month: m, year: y }, { month: prev1Month, year: prev1Year }, { month: prev2Month, year: prev2Year }]);
+                    }}>Reset</Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  {selectedThreeMonths.slice(0, compareCount).map((sel, idx) => {
+                    const updateMonth = (month: number) => {
+                      setSelectedThreeMonths((prev) => prev.map((p, i) => i === idx ? { ...p, month } : p));
+                    };
+                    const updateYear = (year: number) => {
+                      setSelectedThreeMonths((prev) => prev.map((p, i) => i === idx ? { ...p, year } : p));
+                    };
+                    return (
+                      <div key={`${idx}-${sel.year}-${sel.month}`} className="space-y-2">
+                        <MonthSelector
+                          selectedMonth={sel.month}
+                          selectedYear={sel.year}
+                          onMonthChange={updateMonth}
+                          onYearChange={updateYear}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {threeMonthsMetrics.slice(0, compareCount).map((m) => {
+                    const monthName = new Date(m.year, m.month).toLocaleString("en-US", { month: "long" });
+
+                    // Decide which channel values to show
+                    let channelLabel = 'Phone';
+                    let channelGood = m.phoneGood;
+                    let channelBad = m.phoneBad;
+                    if (selectedChannelForComparison === 'chat') {
+                      channelLabel = 'Chat';
+                      channelGood = m.chatGood;
+                      channelBad = m.chatBad;
+                    } else if (selectedChannelForComparison === 'email') {
+                      channelLabel = 'Email';
+                      channelGood = m.emailGood;
+                      channelBad = m.emailBad;
+                    } else if (selectedChannelForComparison === 'all') {
+                      channelLabel = 'All Channels';
+                      channelGood = (m.phoneGood || 0) + (m.chatGood || 0) + (m.emailGood || 0);
+                      channelBad = (m.phoneBad || 0) + (m.chatBad || 0) + (m.emailBad || 0);
+                    }
+
+                    const channelTotal = channelGood + channelBad + (includeKarmaInCSAT ? (m.phoneKarma || 0) : 0);
+                    const channelSuccess = channelTotal > 0 ? (channelGood / channelTotal) * 100 : 0;
+
+                    return (
+                      <div key={`metrics-${m.year}-${m.month}`} className="p-4 bg-gradient-to-br from-card to-muted rounded-xl border border-border shadow-md space-y-4">
+                        <h3 className="text-lg font-semibold text-foreground">{monthName} {m.year}</h3>
+                        <div className="space-y-3">
+                          {selectedMetrics.includes("csat") && (
+                            <PercentageDisplay
+                              title="CSAT"
+                              percentage={m.csat}
+                              subtitle={`${m.totalGood} good / ${m.totalSurveys} surveys`}
+                            />
+                          )}
+                          {selectedMetrics.includes("phone") && (
+                            <PercentageDisplay
+                              title={`${channelLabel} Success`}
+                              percentage={channelSuccess}
+                              subtitle={`${channelGood} good / ${channelBad} bad`}
+                            />
+                          )}
+                          {selectedMetrics.includes("karma") && (
+                            <PercentageDisplay
+                              title="Karma"
+                              percentage={m.karma}
+                              subtitle={`${m.totalGood} / ${m.totalKarmaBase} interactions`}
+                            />
+                          )}
+                          {selectedMetrics.includes("fcr") && (
+                            <PercentageDisplay
+                              title="FCR"
+                              percentage={m.fcr}
+                              subtitle=""
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Phone Analytics - 3 Months */}
+                <div className="animate-fade-in">
+                  <ThreeMonthPhoneAnalytics
+                    months={threeMonthsMetrics.slice(0, compareCount).map((m) => {
+                      const monthName = new Date(m.year, m.month).toLocaleString('en-US', { month: 'long' });
+                      let channelGood = m.phoneGood;
+                      let channelBad = m.phoneBad;
+                      let channelKarma = m.phoneKarma;
+                      if (selectedChannelForComparison === 'chat') {
+                        channelGood = m.chatGood;
+                        channelBad = m.chatBad;
+                        channelKarma = 0;
+                      } else if (selectedChannelForComparison === 'email') {
+                        channelGood = m.emailGood;
+                        channelBad = m.emailBad;
+                        channelKarma = 0;
+                      } else if (selectedChannelForComparison === 'all') {
+                        channelGood = (m.phoneGood || 0) + (m.chatGood || 0) + (m.emailGood || 0);
+                        channelBad = (m.phoneBad || 0) + (m.chatBad || 0) + (m.emailBad || 0);
+                        channelKarma = m.phoneKarma || 0;
+                      }
+                      return {
+                        month: monthName,
+                        good: channelGood,
+                        bad: channelBad,
+                        karma: channelKarma,
+                      };
+                    })}
+                    includeKarma={includeKarmaInCSAT}
+                    showSuccessLine
+                  />
+                </div>
+              </div>
             </div>
           </div>
           )}
