@@ -310,24 +310,8 @@ const Index = () => {
             note: (t as any).note || "",
           }));
           
-          // Auto-create tickets for good ratings that don't have one
-          const goodRatings = loadedData.good;
-          if (loaded.length < goodRatings) {
-            const newTickets: GenesysTicket[] = [];
-            for (let i = 0; i < goodRatings - loaded.length; i++) {
-              newTickets.push({
-                ticketLink: "",
-                ratingScore: 7, // Default good score
-                customerPhone: "",
-                ticketDate: new Date().toISOString().split('T')[0],
-                channel: "Phone",
-                note: "Auto-created from good rating log",
-              });
-            }
-            onGenesysTicketsChange([...loaded, ...newTickets]);
-          } else {
-            setGenesysTickets(loaded);
-          }
+          // Set loaded tickets
+          setGenesysTickets(loaded);
 
           // Recalculate good/bad by channel from the tickets themselves
           let genesysGood = 0;
@@ -454,16 +438,19 @@ const Index = () => {
             const genesysBad = Number(perfSel.genesys_bad || 0);
             const fcrVal = typeof perfSel?.fcr === 'number' ? perfSel.fcr : Number(perfSel?.fcr || 0);
 
-            const phoneGoodSel = Number(perfSel.good_phone || 0);
-            const phoneBadSel = Number(perfSel.bad_phone || 0);
+            // All good ratings are attributed to Phone by default
+            const totalGoodSel = good + genesysGood;
+            const totalBadSel = bad + genesysBad;
+            
+            // Use totalGood for phoneGood when good_phone is 0 (all ratings go to Phone)
+            const phoneGoodSel = Number(perfSel.good_phone || totalGoodSel);
+            const phoneBadSel = Number(perfSel.bad_phone || totalBadSel);
             const chatGoodSel = Number(perfSel.good_chat || 0);
             const chatBadSel = Number(perfSel.bad_chat || 0);
             const emailGoodSel = Number(perfSel.good_email || 0);
             const emailBadSel = Number(perfSel.bad_email || 0);
-            const phoneKarmaSel = Number(perfSel.karma_bad || 0); // per-channel karma not stored, use global karma as approximation
+            const phoneKarmaSel = Number(perfSel.karma_bad || 0);
 
-            const totalGoodSel = good + genesysGood;
-            const totalBadSel = bad + genesysBad;
             const totalSurveysSel = totalGoodSel + totalBadSel + (includeKarmaInCSAT ? karmaBad : 0);
             const totalKarmaBaseSel = totalGoodSel + totalBadSel + karmaBad;
 
@@ -1220,11 +1207,18 @@ const Index = () => {
     return counts;
   }, [genesysTickets]);
 
-  const badByChannel = useMemo(() => ({
-    phone: genesysBadByChannel.phone,
-    chat: genesysBadByChannel.chat,
-    email: genesysBadByChannel.email,
-  }), [genesysBadByChannel]);
+  // All good ratings attributed to Phone (per memory: channel-attribution-logic)
+  // Total bad = DSAT tickets from regular tickets (not karma)
+  const badByChannel = useMemo(() => {
+    const counts = { phone: 0, chat: 0, email: 0 };
+    data.tickets.forEach(ticket => {
+      if (ticket.type === "DSAT") {
+        const ch = ticket.channel.toLowerCase() as keyof typeof counts;
+        counts[ch] += 1;
+      }
+    });
+    return counts;
+  }, [data.tickets]);
 
   const karmaByChannel = useMemo(() => data.tickets.reduce(
     (acc, ticket) => {
@@ -1236,12 +1230,12 @@ const Index = () => {
     { phone: 0, chat: 0, email: 0 }
   ), [data.tickets]);
 
-  // Use Genesys tickets as the single source of truth for Good by channel
+  // All good ratings are attributed to Phone channel (per memory: channel-attribution-logic)
   const goodByChannelWithGenesys = useMemo(() => ({
-    phone: genesysGoodByChannel.phone,
-    chat: genesysGoodByChannel.chat,
-    email: genesysGoodByChannel.email,
-  }), [genesysGoodByChannel]);
+    phone: totalGood, // All good ratings go to Phone
+    chat: 0,
+    email: 0,
+  }), [totalGood]);
  
   useEffect(() => {
     try {
