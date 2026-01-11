@@ -380,32 +380,29 @@ const Index = () => {
       const settled = await Promise.allSettled(
         monthsToFetch.map(async (sel) => {
           try {
-            const { data: perfData } = await supabase
+            const { data: perfData, error: perfErr } = await supabase
               .from('performance_data')
-              .select('*, good_phone, bad_phone, good_chat, bad_chat, good_email, bad_email, karma_bad, genesys_good, genesys_bad, fcr')
+              .select('*')
               .eq('year', sel.year)
               .eq('month', sel.month)
               .eq('user_id', user.id)
               .maybeSingle();
+            if (perfErr) throw perfErr;
             let perfSel = perfData as any;
 
             // If nothing found try 1-based month (some rows might store months as 1-12)
             if (!perfSel) {
               const altMonth = sel.month + 1;
-              try {
-                const { data: perfDataAlt } = await supabase
-                  .from('performance_data')
-                  .select('*, good_phone, bad_phone, good_chat, bad_chat, good_email, bad_email, karma_bad, genesys_good, genesys_bad, fcr')
-                  .eq('year', sel.year)
-                  .eq('month', altMonth)
-                  .eq('user_id', user.id)
-                  .maybeSingle();
-                if (perfDataAlt) {
-                  perfSel = perfDataAlt as any;
-                  console.warn(`Loaded performance_data using 1-based month for ${sel.month}/${sel.year} (query month=${altMonth})`);
-                }
-              } catch (altErr) {
-                console.warn('Error while attempting alternate month fetch', altErr);
+              const { data: perfDataAlt, error: perfAltErr } = await supabase
+                .from('performance_data')
+                .select('*')
+                .eq('year', sel.year)
+                .eq('month', altMonth)
+                .eq('user_id', user.id)
+                .maybeSingle();
+              if (perfAltErr) throw perfAltErr;
+              if (perfDataAlt) {
+                perfSel = perfDataAlt as any;
               }
             }
 
@@ -1207,18 +1204,19 @@ const Index = () => {
     return counts;
   }, [genesysTickets]);
 
-  // All good ratings attributed to Phone (per memory: channel-attribution-logic)
-  // Total bad = DSAT tickets from regular tickets (not karma)
-  const badByChannel = useMemo(() => {
-    const counts = { phone: 0, chat: 0, email: 0 };
-    data.tickets.forEach(ticket => {
-      if (ticket.type === "DSAT") {
-        const ch = ticket.channel.toLowerCase() as keyof typeof counts;
-        counts[ch] += 1;
-      }
-    });
-    return counts;
-  }, [data.tickets]);
+  // Channel distribution: user workflow attributes all (regular + Genesys) good ratings to Phone by default.
+  // To keep Analytics consistent with the Overview totals, we use totalGood/totalBad here.
+  const goodByChannelWithGenesys = useMemo(() => ({
+    phone: totalGood,
+    chat: 0,
+    email: 0,
+  }), [totalGood]);
+
+  const badByChannel = useMemo(() => ({
+    phone: totalBad,
+    chat: 0,
+    email: 0,
+  }), [totalBad]);
 
   const karmaByChannel = useMemo(() => data.tickets.reduce(
     (acc, ticket) => {
@@ -1229,13 +1227,6 @@ const Index = () => {
     },
     { phone: 0, chat: 0, email: 0 }
   ), [data.tickets]);
-
-  // All good ratings are attributed to Phone channel (per memory: channel-attribution-logic)
-  const goodByChannelWithGenesys = useMemo(() => ({
-    phone: totalGood, // All good ratings go to Phone
-    chat: 0,
-    email: 0,
-  }), [totalGood]);
  
   useEffect(() => {
     try {
@@ -1320,18 +1311,20 @@ const Index = () => {
         try {
           const { data: perfData, error } = await supabase
             .from('performance_data')
-            .select('good_phone,bad_phone,karma_bad')
+            .select('good, bad, genesys_good, genesys_bad, good_phone, karma_bad')
             .eq('user_id', user.id)
             .eq('year', year)
             .eq('month', month)
             .maybeSingle();
           if (error) throw error;
           if (perfData) {
+            const totalGoodSel = Number((perfData as any).good || 0) + Number((perfData as any).genesys_good || 0);
+            const totalBadSel = Number((perfData as any).bad || 0) + Number((perfData as any).genesys_bad || 0);
             results.push({
               month: new Date(year, month).toLocaleString('en-US', { month: 'long' }),
-              good: (perfData as any).good_phone || 0,
-              bad: (perfData as any).bad_phone || 0,
-              karma: (perfData as any).karma_bad || 0,
+              good: Number((perfData as any).good_phone || totalGoodSel),
+              bad: totalBadSel,
+              karma: Number((perfData as any).karma_bad || 0),
             });
           }
         } catch (e) {
@@ -1558,228 +1551,67 @@ const Index = () => {
                   totalGood={totalGood}
                 />
 
-              {/* 3-Month Performance (moved from Overview) */}
+              {/* 3-Month Performance */}
               <div className="space-y-6 animate-fade-in mt-6">
                 <h2 className="text-2xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">📅 3-Month Performance</h2>
-                {threeMonthsWarning && (
-                  <div className="space-y-2">
-                    <div className="text-sm text-destructive">{threeMonthsWarning}</div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="ghost" onClick={async () => {
-                        // Create empty rows for missing months
-                        const missing = threeMonthsWarning.match(/No data found for: (.*) \(tried/);
-                        if (!missing) return;
-                        const months = missing[1].split(',').map(s => s.trim());
-                        for (const m of months) {
-                          const [monthStr, yearStr] = m.split('/');
-                          const monthNum = Number(monthStr);
-                          const yearNum = Number(yearStr);
-                          try {
-                            await supabase.from('performance_data').insert({ year: yearNum, month: monthNum, user_id: user.id });
-                            toast.success(`Created empty record for ${monthNum}/${yearNum}`);
-                          } catch (err) {
-                            console.warn('Error creating empty month record', err);
-                            toast.error('Failed creating empty month record');
-                          }
-                        }
-                        await loadSelectedMonthsData();
-                      }}>
-                        Create empty month(s)
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={async () => {
-                        // Fetch raw records for the months (0-based then 1-based)
-                        const missing = threeMonthsWarning.match(/No data found for: (.*) \(tried/);
-                        if (!missing) return;
-                        const months = missing[1].split(',').map(s => s.trim());
-                        const debugResults: Record<string, any> = {};
-                        for (const m of months) {
-                          const [monthStr, yearStr] = m.split('/');
-                          const mNum = Number(monthStr);
-                          const yNum = Number(yearStr);
-                          const { data: r0 } = await supabase.from('performance_data').select('*').eq('year', yNum).eq('month', mNum).eq('user_id', user.id).maybeSingle();
-                          const { data: r1 } = await supabase.from('performance_data').select('*').eq('year', yNum).eq('month', mNum + 1).eq('user_id', user.id).maybeSingle();
-                          debugResults[`${mNum}/${yNum}`] = { r0, r1 };
-                        }
-                        // Store in state for display
-                        setThreeMonthsDebug(debugResults);
-                      }}>
-                        Inspect raw data
-                      </Button>
-                    </div>
-                    {threeMonthsDebug && (
-                      <pre className="p-2 mt-2 text-xs bg-surface rounded">{JSON.stringify(threeMonthsDebug, null, 2)}</pre>
-                    )}
+
+                {threeMonthsMetrics.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No 3-month data yet.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {threeMonthsMetrics.slice(0, compareCount).map((m) => {
+                      const monthName = new Date(m.year, m.month).toLocaleString("en-US", { month: "long" });
+                      const phoneTotal = (m.phoneGood || 0) + (m.phoneBad || 0) + (includeKarmaInCSAT ? (m.phoneKarma || 0) : 0);
+                      const phoneSuccess = phoneTotal > 0 ? (m.phoneGood / phoneTotal) * 100 : 0;
+
+                      return (
+                        <div key={`metrics-${m.year}-${m.month}`} className="p-4 bg-card rounded-xl border border-border shadow-sm space-y-4">
+                          <h3 className="text-lg font-semibold text-foreground">{monthName} {m.year}</h3>
+                          <div className="space-y-3">
+                            {selectedMetrics.includes("csat") && (
+                              <PercentageDisplay
+                                title="CSAT"
+                                percentage={m.csat}
+                                subtitle={`${m.totalGood} good / ${m.totalSurveys} surveys`}
+                              />
+                            )}
+                            {selectedMetrics.includes("phone") && (
+                              <PercentageDisplay
+                                title="Phone Success"
+                                percentage={phoneSuccess}
+                                subtitle={`${m.phoneGood} good / ${m.phoneBad} bad`}
+                              />
+                            )}
+                            {selectedMetrics.includes("karma") && (
+                              <PercentageDisplay
+                                title="Karma"
+                                percentage={m.karma}
+                                subtitle={`${m.totalGood} / ${m.totalKarmaBase} interactions`}
+                              />
+                            )}
+                            {selectedMetrics.includes("fcr") && (
+                              <PercentageDisplay
+                                title="FCR"
+                                percentage={m.fcr}
+                                subtitle=""
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-                <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">اختر الشهور والمعايير المراد عرضها</p>
-                    <div className="mt-2">
-                      <ToggleGroup type="multiple" value={selectedMetrics} onValueChange={(v) => setSelectedMetrics(v as string[])}>
-                        <ToggleGroupItem value="csat">CSAT</ToggleGroupItem>
-                        <ToggleGroupItem value="phone">Phone</ToggleGroupItem>
-                        <ToggleGroupItem value="karma">Karma</ToggleGroupItem>
-                        <ToggleGroupItem value="fcr">FCR</ToggleGroupItem>
-                      </ToggleGroup>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Checkbox checked={includeKarmaInCSAT} onCheckedChange={(v) => setIncludeKarmaInCSAT(Boolean(v))} />
-                      <span className="text-sm text-muted-foreground">ضمّ Karma في CSAT</span>
-                    </div>
-
-                    <Select value={selectedChannelForComparison} onValueChange={(v) => setSelectedChannelForComparison(v as any)}>
-                      <SelectTrigger className="w-40 bg-background">
-                        <SelectValue placeholder="Channel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Channels</SelectItem>
-                        <SelectItem value="phone">Phone</SelectItem>
-                        <SelectItem value="chat">Chat</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm text-muted-foreground">Compare</label>
-                      <RadioGroup value={String(compareCount)} onValueChange={(v) => setCompareCount(v === '2' ? 2 : 3)}>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="2" className="h-4 w-4" />
-                          <span className="text-sm">2</span>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          <RadioGroupItem value="3" className="h-4 w-4" />
-                          <span className="text-sm">3</span>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    <Button size="sm" variant="secondary" onClick={() => {
-                      const now = new Date();
-                      const m = now.getMonth();
-                      const y = now.getFullYear();
-                      const prev1Month = m - 1 < 0 ? 11 : m - 1;
-                      const prev1Year = m - 1 < 0 ? y - 1 : y;
-                      const prev2Month = m - 2 < 0 ? (12 + (m - 2)) : m - 2;
-                      const prev2Year = m - 2 < 0 ? y - 1 : y;
-                      setSelectedThreeMonths([{ month: m, year: y }, { month: prev1Month, year: prev1Year }, { month: prev2Month, year: prev2Year }]);
-                    }}>Reset</Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  {selectedThreeMonths.slice(0, compareCount).map((sel, idx) => {
-                    const updateMonth = (month: number) => {
-                      setSelectedThreeMonths((prev) => prev.map((p, i) => i === idx ? { ...p, month } : p));
-                    };
-                    const updateYear = (year: number) => {
-                      setSelectedThreeMonths((prev) => prev.map((p, i) => i === idx ? { ...p, year } : p));
-                    };
-                    return (
-                      <div key={`${idx}-${sel.year}-${sel.month}`} className="space-y-2">
-                        <MonthSelector
-                          selectedMonth={sel.month}
-                          selectedYear={sel.year}
-                          onMonthChange={updateMonth}
-                          onYearChange={updateYear}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {threeMonthsMetrics.slice(0, compareCount).map((m) => {
-                    const monthName = new Date(m.year, m.month).toLocaleString("en-US", { month: "long" });
-
-                    // Decide which channel values to show
-                    let channelLabel = 'Phone';
-                    let channelGood = m.phoneGood;
-                    let channelBad = m.phoneBad;
-                    if (selectedChannelForComparison === 'chat') {
-                      channelLabel = 'Chat';
-                      channelGood = m.chatGood;
-                      channelBad = m.chatBad;
-                    } else if (selectedChannelForComparison === 'email') {
-                      channelLabel = 'Email';
-                      channelGood = m.emailGood;
-                      channelBad = m.emailBad;
-                    } else if (selectedChannelForComparison === 'all') {
-                      channelLabel = 'All Channels';
-                      channelGood = (m.phoneGood || 0) + (m.chatGood || 0) + (m.emailGood || 0);
-                      channelBad = (m.phoneBad || 0) + (m.chatBad || 0) + (m.emailBad || 0);
-                    }
-
-                    const channelTotal = channelGood + channelBad + (includeKarmaInCSAT ? (m.phoneKarma || 0) : 0);
-                    const channelSuccess = channelTotal > 0 ? (channelGood / channelTotal) * 100 : 0;
-
-                    return (
-                      <div key={`metrics-${m.year}-${m.month}`} className="p-4 bg-gradient-to-br from-card to-muted rounded-xl border border-border shadow-md space-y-4">
-                        <h3 className="text-lg font-semibold text-foreground">{monthName} {m.year}</h3>
-                        <div className="space-y-3">
-                          {selectedMetrics.includes("csat") && (
-                            <PercentageDisplay
-                              title="CSAT"
-                              percentage={m.csat}
-                              subtitle={`${m.totalGood} good / ${m.totalSurveys} surveys`}
-                            />
-                          )}
-                          {selectedMetrics.includes("phone") && (
-                            <PercentageDisplay
-                              title={`${channelLabel} Success`}
-                              percentage={channelSuccess}
-                              subtitle={`${channelGood} good / ${channelBad} bad`}
-                            />
-                          )}
-                          {selectedMetrics.includes("karma") && (
-                            <PercentageDisplay
-                              title="Karma"
-                              percentage={m.karma}
-                              subtitle={`${m.totalGood} / ${m.totalKarmaBase} interactions`}
-                            />
-                          )}
-                          {selectedMetrics.includes("fcr") && (
-                            <PercentageDisplay
-                              title="FCR"
-                              percentage={m.fcr}
-                              subtitle=""
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
 
                 {/* Phone Analytics - 3 Months */}
                 <div className="animate-fade-in">
                   <ThreeMonthPhoneAnalytics
-                    months={threeMonthsMetrics.slice(0, compareCount).map((m) => {
-                      const monthName = new Date(m.year, m.month).toLocaleString('en-US', { month: 'long' });
-                      let channelGood = m.phoneGood;
-                      let channelBad = m.phoneBad;
-                      let channelKarma = m.phoneKarma;
-                      if (selectedChannelForComparison === 'chat') {
-                        channelGood = m.chatGood;
-                        channelBad = m.chatBad;
-                        channelKarma = 0;
-                      } else if (selectedChannelForComparison === 'email') {
-                        channelGood = m.emailGood;
-                        channelBad = m.emailBad;
-                        channelKarma = 0;
-                      } else if (selectedChannelForComparison === 'all') {
-                        channelGood = (m.phoneGood || 0) + (m.chatGood || 0) + (m.emailGood || 0);
-                        channelBad = (m.phoneBad || 0) + (m.chatBad || 0) + (m.emailBad || 0);
-                        channelKarma = m.phoneKarma || 0;
-                      }
-                      return {
-                        month: monthName,
-                        good: channelGood,
-                        bad: channelBad,
-                        karma: channelKarma,
-                      };
-                    })}
+                    months={threeMonthsMetrics.slice(0, compareCount).map((m) => ({
+                      month: new Date(m.year, m.month).toLocaleString('en-US', { month: 'long' }),
+                      good: m.phoneGood,
+                      bad: m.phoneBad,
+                      karma: m.phoneKarma,
+                    }))}
                     includeKarma={includeKarmaInCSAT}
                     showSuccessLine
                   />
