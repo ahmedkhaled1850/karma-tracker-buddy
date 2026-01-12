@@ -1206,19 +1206,52 @@ const Index = () => {
     return counts;
   }, [genesysTickets]);
 
-  // Channel distribution: user workflow attributes all (regular + Genesys) good ratings to Phone by default.
-  // To keep Analytics consistent with the Overview totals, we use totalGood/totalBad here.
-  const goodByChannelWithGenesys = useMemo(() => ({
-    phone: totalGood,
-    chat: 0,
-    email: 0,
-  }), [totalGood]);
+  // Channel distribution for good ratings: use goodByChannel from performance_data
+  // These fields track the actual channel distribution of good ratings
+  const goodByChannelWithGenesys = useMemo(() => {
+    const perfGoodPhone = data.goodByChannel?.phone || 0;
+    const perfGoodChat = data.goodByChannel?.chat || 0;
+    const perfGoodEmail = data.goodByChannel?.email || 0;
+    const perfTotal = perfGoodPhone + perfGoodChat + perfGoodEmail;
+    
+    if (perfTotal === 0 || perfTotal < totalGood) {
+      // If no channel distribution set, or it's incomplete, attribute remaining to Phone
+      const remainder = totalGood - perfTotal;
+      return {
+        phone: perfGoodPhone + remainder,
+        chat: perfGoodChat,
+        email: perfGoodEmail,
+      };
+    }
+    return {
+      phone: perfGoodPhone,
+      chat: perfGoodChat,
+      email: perfGoodEmail,
+    };
+  }, [data.goodByChannel, totalGood]);
 
-  const badByChannel = useMemo(() => ({
-    phone: totalBad,
-    chat: 0,
-    email: 0,
-  }), [totalBad]);
+  // Channel distribution for bad ratings: get from DSAT tickets
+  const badByChannel = useMemo(() => {
+    const counts = { phone: 0, chat: 0, email: 0 };
+    const dsatTickets = data.tickets.filter(t => t.type === "DSAT");
+    
+    if (dsatTickets.length === 0) {
+      // If no DSAT tickets exist, attribute all to Phone (default workflow)
+      counts.phone = totalBad;
+    } else {
+      // Use actual ticket distribution
+      dsatTickets.forEach(t => {
+        const ch = (t.channel || "Phone").toLowerCase() as keyof typeof counts;
+        if (ch in counts) counts[ch]++;
+      });
+      // If tickets don't match totalBad, add remainder to Phone
+      const ticketTotal = counts.phone + counts.chat + counts.email;
+      if (ticketTotal < totalBad) {
+        counts.phone += (totalBad - ticketTotal);
+      }
+    }
+    return counts;
+  }, [data.tickets, totalBad]);
 
   const karmaByChannel = useMemo(() => data.tickets.reduce(
     (acc, ticket) => {
