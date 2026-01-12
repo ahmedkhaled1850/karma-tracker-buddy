@@ -28,7 +28,7 @@ import SurveyConversion from "@/components/SurveyConversion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ThreeMonthPhoneAnalytics, PhoneMonthData } from "@/components/ThreeMonthPhoneAnalytics";
+import { ThreeMonthPerformance, MonthMetrics } from "@/components/ThreeMonthPerformance";
 
 interface WeeklyData {
   week: number;
@@ -151,16 +151,25 @@ const Index = () => {
       { month: prev2Month, year: prev2Year },
     ];
   });
-  const [threeMonthsMetrics, setThreeMonthsMetrics] = useState<Array<{ month: number; year: number; csat: number; karma: number; fcr: number; totalGood: number; totalSurveys: number; totalKarmaBase: number; phoneGood: number; phoneBad: number; phoneKarma: number; chatGood: number; chatBad: number; emailGood: number; emailBad: number }>>([]);
-  const [phoneMonthData, setPhoneMonthData] = useState<PhoneMonthData[]>([]);
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["csat", "phone", "karma", "fcr"]);
+  const [threeMonthsMetrics, setThreeMonthsMetrics] = useState<MonthMetrics[]>([]);
 
   // 3-month comparison UI state
   const [includeKarmaInCSAT, setIncludeKarmaInCSAT] = useState<boolean>(false);
-  const [selectedChannelForComparison, setSelectedChannelForComparison] = useState<'all' | 'phone' | 'chat' | 'email'>('phone');
-  const [compareCount, setCompareCount] = useState<2 | 3>(3);
-  const [threeMonthsWarning, setThreeMonthsWarning] = useState<string | null>(null);
-  const [threeMonthsDebug, setThreeMonthsDebug] = useState<Record<string, any> | null>(null);
+
+  // Available months for selection (last 12 months)
+  const availableMonthsForComparison = useMemo(() => {
+    const result: Array<{ month: number; year: number; label: string }> = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      result.push({
+        month: d.getMonth(),
+        year: d.getFullYear(),
+        label: d.toLocaleString("en-US", { month: "short", year: "2-digit" }),
+      });
+    }
+    return result;
+  }, []);
 
   // IMPORTANT: Do NOT auto-reconcile counters from tickets/genesys lists.
   // This was causing cascaded changes (+10 then -9, etc.) and polluting the Daily Change Log.
@@ -238,7 +247,7 @@ const Index = () => {
     if (user) {
       loadSelectedMonthsData();
     }
-  }, [selectedThreeMonths, user, includeKarmaInCSAT, compareCount]);
+  }, [selectedThreeMonths, user, includeKarmaInCSAT]);
 
   const loadMonthData = async () => {
     if (!user) return;
@@ -374,8 +383,8 @@ const Index = () => {
   const loadSelectedMonthsData = async () => {
     if (!user) return;
     try {
-      // Only fetch the months that are used for comparison (2 or 3)
-      const monthsToFetch = selectedThreeMonths.slice(0, compareCount);
+      // Fetch all selected months
+      const monthsToFetch = selectedThreeMonths;
       const failedMonths: string[] = [];
       const settled = await Promise.allSettled(
         monthsToFetch.map(async (sel) => {
@@ -519,13 +528,6 @@ const Index = () => {
       });
 
       setThreeMonthsMetrics(results);
-      setThreeMonthsDebug({ computed: results });
-
-      if (failedMonths.length > 0) {
-        setThreeMonthsWarning(`No data found for: ${failedMonths.join(', ')} (tried 0-based and 1-based months).`);
-      } else {
-        setThreeMonthsWarning(null);
-      }
     } catch (e) {
       console.error('Error loading selected months:', e);
       setThreeMonthsMetrics([]);
@@ -1303,38 +1305,6 @@ const Index = () => {
     toast.success("CSV exported successfully!");
   };
 
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      const results: PhoneMonthData[] = [];
-      for (const { month, year } of selectedThreeMonths) {
-        try {
-          const { data: perfData, error } = await supabase
-            .from('performance_data')
-            .select('good, bad, genesys_good, genesys_bad, good_phone, karma_bad')
-            .eq('user_id', user.id)
-            .eq('year', year)
-            .eq('month', month)
-            .maybeSingle();
-          if (error) throw error;
-          if (perfData) {
-            const totalGoodSel = Number((perfData as any).good || 0) + Number((perfData as any).genesys_good || 0);
-            const totalBadSel = Number((perfData as any).bad || 0) + Number((perfData as any).genesys_bad || 0);
-            results.push({
-              month: new Date(year, month).toLocaleString('en-US', { month: 'long' }),
-              good: Number((perfData as any).good_phone || totalGoodSel),
-              bad: totalBadSel,
-              karma: Number((perfData as any).karma_bad || 0),
-            });
-          }
-        } catch (e) {
-          console.error('Failed to load phone KPI for', month, year, e);
-        }
-      }
-      setPhoneMonthData(results);
-    };
-    fetchData();
-  }, [selectedThreeMonths, user]);
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
@@ -1554,68 +1524,14 @@ const Index = () => {
               {/* 3-Month Performance */}
               <div className="space-y-6 animate-fade-in mt-6">
                 <h2 className="text-2xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">📅 3-Month Performance</h2>
-
-                {threeMonthsMetrics.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No 3-month data yet.</div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {threeMonthsMetrics.slice(0, compareCount).map((m) => {
-                      const monthName = new Date(m.year, m.month).toLocaleString("en-US", { month: "long" });
-                      const phoneTotal = (m.phoneGood || 0) + (m.phoneBad || 0) + (includeKarmaInCSAT ? (m.phoneKarma || 0) : 0);
-                      const phoneSuccess = phoneTotal > 0 ? (m.phoneGood / phoneTotal) * 100 : 0;
-
-                      return (
-                        <div key={`metrics-${m.year}-${m.month}`} className="p-4 bg-card rounded-xl border border-border shadow-sm space-y-4">
-                          <h3 className="text-lg font-semibold text-foreground">{monthName} {m.year}</h3>
-                          <div className="space-y-3">
-                            {selectedMetrics.includes("csat") && (
-                              <PercentageDisplay
-                                title="CSAT"
-                                percentage={m.csat}
-                                subtitle={`${m.totalGood} good / ${m.totalSurveys} surveys`}
-                              />
-                            )}
-                            {selectedMetrics.includes("phone") && (
-                              <PercentageDisplay
-                                title="Phone Success"
-                                percentage={phoneSuccess}
-                                subtitle={`${m.phoneGood} good / ${m.phoneBad} bad`}
-                              />
-                            )}
-                            {selectedMetrics.includes("karma") && (
-                              <PercentageDisplay
-                                title="Karma"
-                                percentage={m.karma}
-                                subtitle={`${m.totalGood} / ${m.totalKarmaBase} interactions`}
-                              />
-                            )}
-                            {selectedMetrics.includes("fcr") && (
-                              <PercentageDisplay
-                                title="FCR"
-                                percentage={m.fcr}
-                                subtitle=""
-                              />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Phone Analytics - 3 Months */}
-                <div className="animate-fade-in">
-                  <ThreeMonthPhoneAnalytics
-                    months={threeMonthsMetrics.slice(0, compareCount).map((m) => ({
-                      month: new Date(m.year, m.month).toLocaleString('en-US', { month: 'long' }),
-                      good: m.phoneGood,
-                      bad: m.phoneBad,
-                      karma: m.phoneKarma,
-                    }))}
-                    includeKarma={includeKarmaInCSAT}
-                    showSuccessLine
-                  />
-                </div>
+                <ThreeMonthPerformance
+                  metrics={threeMonthsMetrics}
+                  includeKarmaInCSAT={includeKarmaInCSAT}
+                  onIncludeKarmaChange={setIncludeKarmaInCSAT}
+                  availableMonths={availableMonthsForComparison}
+                  selectedMonths={selectedThreeMonths}
+                  onMonthsChange={setSelectedThreeMonths}
+                />
               </div>
             </div>
           </div>
