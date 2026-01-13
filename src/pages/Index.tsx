@@ -1559,8 +1559,6 @@ const Index = () => {
                 <h2 className="text-2xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">📅 3-Month Performance</h2>
                 <ThreeMonthPerformance
                   metrics={threeMonthsMetrics}
-                  includeKarmaInCSAT={includeKarmaInCSAT}
-                  onIncludeKarmaChange={setIncludeKarmaInCSAT}
                   availableMonths={availableMonthsForComparison}
                   selectedMonths={selectedThreeMonths}
                   onMonthsChange={setSelectedThreeMonths}
