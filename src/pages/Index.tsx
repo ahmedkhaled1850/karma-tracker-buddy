@@ -444,20 +444,45 @@ const Index = () => {
             const genesysBad = Number(perfSel.genesys_bad || 0);
             const fcrVal = typeof perfSel?.fcr === 'number' ? perfSel.fcr : Number(perfSel?.fcr || 0);
 
-            // All good ratings are attributed to Phone by default
             const totalGoodSel = good + genesysGood;
             const totalBadSel = bad + genesysBad;
-            
-            // Use totalGood for phoneGood when good_phone is 0 (all ratings go to Phone)
-            const phoneGoodSel = Number(perfSel.good_phone || totalGoodSel);
-            const phoneBadSel = Number(perfSel.bad_phone || totalBadSel);
-            const chatGoodSel = Number(perfSel.good_chat || 0);
-            const chatBadSel = Number(perfSel.bad_chat || 0);
-            const emailGoodSel = Number(perfSel.good_email || 0);
-            const emailBadSel = Number(perfSel.bad_email || 0);
-            const phoneKarmaSel = Number(perfSel.karma_bad || 0);
 
-            const totalSurveysSel = totalGoodSel + totalBadSel + (includeKarmaInCSAT ? karmaBad : 0);
+            // GOOD channel distribution: use performance_data (good_phone/chat/email) + remainder to Phone
+            const basePhoneGood = Number(perfSel.good_phone || 0);
+            const baseChatGood = Number(perfSel.good_chat || 0);
+            const baseEmailGood = Number(perfSel.good_email || 0);
+            const baseGoodSum = basePhoneGood + baseChatGood + baseEmailGood;
+            const phoneGoodSel = basePhoneGood + Math.max(0, totalGoodSel - baseGoodSum);
+            const chatGoodSel = baseChatGood;
+            const emailGoodSel = baseEmailGood;
+
+            // BAD channel distribution: use actual DSAT tickets by channel + remainder to Phone
+            const dsatCounts = { phone: 0, chat: 0, email: 0 };
+            if (perfSel.id) {
+              const { data: dsatTickets, error: dsatErr } = await supabase
+                .from('tickets')
+                .select('channel')
+                .eq('performance_id', perfSel.id)
+                .eq('user_id', user.id)
+                .eq('type', 'DSAT');
+              if (dsatErr) throw dsatErr;
+              (dsatTickets || []).forEach((t: any) => {
+                const ch = String(t.channel || 'Phone').toLowerCase();
+                if (ch === 'phone') dsatCounts.phone += 1;
+                else if (ch === 'chat') dsatCounts.chat += 1;
+                else if (ch === 'email') dsatCounts.email += 1;
+                else dsatCounts.phone += 1;
+              });
+            }
+            const dsatSum = dsatCounts.phone + dsatCounts.chat + dsatCounts.email;
+            const phoneBadSel = dsatCounts.phone + Math.max(0, totalBadSel - dsatSum);
+            const chatBadSel = dsatCounts.chat;
+            const emailBadSel = dsatCounts.email;
+
+            const phoneKarmaSel = karmaBad;
+
+            // CSAT total should be based on surveys only (good + bad). Karma is its own metric.
+            const totalSurveysSel = totalGoodSel + totalBadSel;
             const totalKarmaBaseSel = totalGoodSel + totalBadSel + karmaBad;
 
             const csatSel = totalSurveysSel > 0 ? (totalGoodSel / totalSurveysSel) * 100 : 0;
