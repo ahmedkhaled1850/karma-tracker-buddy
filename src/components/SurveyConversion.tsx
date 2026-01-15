@@ -3,7 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Phone, Send, TrendingUp, CheckCircle, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Phone, Send, TrendingUp, CheckCircle, AlertTriangle, Calendar, Edit2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -29,8 +32,30 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
   });
   const [monthlyData, setMonthlyData] = useState<DailySurveyData[]>([]);
   const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingDay, setEditingDay] = useState<{ date: string; calls: number; surveys: number } | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef(false);
+
+  // Generate all days of the selected month
+  const allDaysOfMonth = useMemo(() => {
+    const days: string[] = [];
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      days.push(dateStr);
+    }
+    return days;
+  }, [selectedMonth, selectedYear]);
+
+  // Create a map for quick lookup
+  const monthlyDataMap = useMemo(() => {
+    const map: Record<string, DailySurveyData> = {};
+    monthlyData.forEach(d => {
+      map[d.call_date] = d;
+    });
+    return map;
+  }, [monthlyData]);
 
   // Load today's data
   useEffect(() => {
@@ -57,24 +82,24 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
   }, [userId, todayStr]);
 
   // Load monthly data
+  const loadMonthlyData = async () => {
+    const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+    const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-31`;
+
+    const { data, error } = await supabase
+      .from("daily_survey_calls")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("call_date", startDate)
+      .lte("call_date", endDate)
+      .order("call_date", { ascending: true });
+
+    if (data && !error) {
+      setMonthlyData(data);
+    }
+  };
+
   useEffect(() => {
-    const loadMonthlyData = async () => {
-      const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
-      const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-31`;
-
-      const { data, error } = await supabase
-        .from("daily_survey_calls")
-        .select("*")
-        .eq("user_id", userId)
-        .gte("call_date", startDate)
-        .lte("call_date", endDate)
-        .order("call_date", { ascending: true });
-
-      if (data && !error) {
-        setMonthlyData(data);
-      }
-    };
-
     if (userId) loadMonthlyData();
   }, [userId, selectedMonth, selectedYear]);
 
@@ -92,7 +117,7 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
     : 0;
   const isMonthlyMet = monthlyConversionRate >= 85;
 
-  // Auto-save function
+  // Auto-save function for today
   const autoSave = async (dataToSave: DailySurveyData) => {
     if (saving) return;
     setSaving(true);
@@ -125,17 +150,47 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
         }
       }
       
-      // Refresh monthly data
-      const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
-      const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-31`;
-      const { data: refreshed } = await supabase
-        .from("daily_survey_calls")
-        .select("*")
-        .eq("user_id", userId)
-        .gte("call_date", startDate)
-        .lte("call_date", endDate)
-        .order("call_date", { ascending: true });
-      if (refreshed) setMonthlyData(refreshed);
+      await loadMonthlyData();
+
+    } catch (err: any) {
+      toast.error("Failed to save: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save a specific day's data
+  const saveDayData = async (dateStr: string, calls: number, surveys: number) => {
+    setSaving(true);
+    try {
+      const existing = monthlyDataMap[dateStr];
+      
+      if (existing?.id) {
+        const { error } = await supabase
+          .from("daily_survey_calls")
+          .update({
+            total_calls: calls,
+            surveys_sent: surveys,
+          })
+          .eq("id", existing.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("daily_survey_calls")
+          .insert({
+            user_id: userId,
+            call_date: dateStr,
+            total_calls: calls,
+            surveys_sent: surveys,
+          });
+
+        if (error) throw error;
+      }
+      
+      await loadMonthlyData();
+      toast.success("Saved!");
+      setEditingDay(null);
 
     } catch (err: any) {
       toast.error("Failed to save: " + err.message);
@@ -163,6 +218,12 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
     };
   }, [todayData.total_calls, todayData.surveys_sent]);
 
+  // Format date for display
+  const formatDayDisplay = (dateStr: string) => {
+    const parts = dateStr.split("-");
+    return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+  };
+
   return (
     <Card className="p-6 border-border bg-card shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -170,9 +231,130 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
           <Phone className="h-5 w-5 text-primary" />
           Survey Conversion (85% Target)
         </h3>
-        {saving && (
-          <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
-        )}
+        <div className="flex items-center gap-2">
+          {saving && (
+            <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Calendar className="h-4 w-4" />
+                View Full Month
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Monthly Data - {selectedMonth + 1}/{selectedYear}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="overflow-auto flex-1">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Date</TableHead>
+                      <TableHead className="text-center">Calls</TableHead>
+                      <TableHead className="text-center">Surveys</TableHead>
+                      <TableHead className="text-center">Rate</TableHead>
+                      <TableHead className="text-center">Gap</TableHead>
+                      <TableHead className="w-16"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allDaysOfMonth.map((dateStr) => {
+                      const dayData = monthlyDataMap[dateStr];
+                      const calls = dayData?.total_calls || 0;
+                      const surveys = dayData?.surveys_sent || 0;
+                      const rate = calls > 0 ? (surveys / calls) * 100 : 0;
+                      const required = Math.ceil(calls * 0.85);
+                      const gap = surveys - required;
+                      const isEditing = editingDay?.date === dateStr;
+
+                      return (
+                        <TableRow key={dateStr} className={calls === 0 ? "opacity-50" : ""}>
+                          <TableCell className="font-medium">{formatDayDisplay(dateStr)}</TableCell>
+                          <TableCell className="text-center">
+                            {isEditing ? (
+                              <Input
+                                type="number"
+                                min={0}
+                                value={editingDay.calls}
+                                onChange={(e) => setEditingDay({ ...editingDay, calls: parseInt(e.target.value) || 0 })}
+                                className="w-20 h-8 text-center mx-auto"
+                              />
+                            ) : (
+                              calls
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isEditing ? (
+                              <Input
+                                type="number"
+                                min={0}
+                                value={editingDay.surveys}
+                                onChange={(e) => setEditingDay({ ...editingDay, surveys: parseInt(e.target.value) || 0 })}
+                                className="w-20 h-8 text-center mx-auto"
+                              />
+                            ) : (
+                              surveys
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={rate >= 85 ? "text-green-500 font-medium" : rate > 0 ? "text-orange-500" : "text-muted-foreground"}>
+                              {rate.toFixed(2)}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {calls > 0 ? (
+                              <span className={gap >= 0 ? "text-green-500" : "text-red-500"}>
+                                {gap >= 0 ? gap : gap}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">0</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isEditing ? (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-green-500 hover:text-green-600"
+                                  onClick={() => saveDayData(dateStr, editingDay.calls, editingDay.surveys)}
+                                  disabled={saving}
+                                >
+                                  ✓
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-red-500 hover:text-red-600"
+                                  onClick={() => setEditingDay(null)}
+                                >
+                                  ✕
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setEditingDay({ date: dateStr, calls, surveys })}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
