@@ -343,7 +343,8 @@ const Index = () => {
               else if (channel === 'email') badByChannel.email++;
             }
           }
-          
+
+          // Update UI state
           setData(prev => ({
             ...prev,
             genesysGood,
@@ -351,6 +352,20 @@ const Index = () => {
             goodByChannel,
             badByChannel,
           }));
+
+          // IMPORTANT: keep performance_data in sync with Genesys ticket truth (fixes wrong totals like 128)
+          const dbGenesysGood = Number(perfData.genesys_good || 0);
+          const dbGenesysBad = Number(perfData.genesys_bad || 0);
+          if (dbGenesysGood !== genesysGood || dbGenesysBad !== genesysBad) {
+            try {
+              await supabase
+                .from('performance_data')
+                .update({ genesys_good: genesysGood, genesys_bad: genesysBad })
+                .eq('id', perfData.id);
+            } catch {
+              // ignore sync errors; UI is already correct
+            }
+          }
         }
 
       } else {
