@@ -159,23 +159,31 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
     }
   };
 
-  // Save a specific day's data
+  // Save a specific day's data using upsert
   const saveDayData = async (dateStr: string, calls: number, surveys: number) => {
     setSaving(true);
     try {
-      const existing = monthlyDataMap[dateStr];
-      
-      if (existing?.id) {
+      // First try to find existing record
+      const { data: existingData } = await supabase
+        .from("daily_survey_calls")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("call_date", dateStr)
+        .maybeSingle();
+
+      if (existingData?.id) {
+        // Update existing record
         const { error } = await supabase
           .from("daily_survey_calls")
           .update({
             total_calls: calls,
             surveys_sent: surveys,
           })
-          .eq("id", existing.id);
+          .eq("id", existingData.id);
 
         if (error) throw error;
       } else {
+        // Insert new record
         const { error } = await supabase
           .from("daily_survey_calls")
           .insert({
