@@ -99,6 +99,60 @@ export type Database = {
           },
         ]
       }
+      daily_shifts: {
+        Row: {
+          break1_duration: number | null
+          break1_time: string | null
+          break2_duration: number | null
+          break2_time: string | null
+          break3_duration: number | null
+          break3_time: string | null
+          created_at: string
+          id: string
+          is_off_day: boolean
+          notes: string | null
+          shift_date: string
+          shift_end: string | null
+          shift_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          break1_duration?: number | null
+          break1_time?: string | null
+          break2_duration?: number | null
+          break2_time?: string | null
+          break3_duration?: number | null
+          break3_time?: string | null
+          created_at?: string
+          id?: string
+          is_off_day?: boolean
+          notes?: string | null
+          shift_date: string
+          shift_end?: string | null
+          shift_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          break1_duration?: number | null
+          break1_time?: string | null
+          break2_duration?: number | null
+          break2_time?: string | null
+          break3_duration?: number | null
+          break3_time?: string | null
+          created_at?: string
+          id?: string
+          is_off_day?: boolean
+          notes?: string | null
+          shift_date?: string
+          shift_end?: string | null
+          shift_start?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_survey_calls: {
         Row: {
           call_date: string

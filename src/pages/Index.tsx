@@ -1,14 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Download, Plus, Minus, LogOut, User, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
+import { Download, ThumbsUp, ThumbsDown, AlertTriangle, LogOut } from "lucide-react";
 import { toast } from "sonner";
  
 import { MetricCard } from "@/components/MetricCard";
 import { PercentageDisplay } from "@/components/PercentageDisplay";
-import { GoalsSection } from "@/components/GoalsSection";
 import { TicketsTable, Ticket } from "@/components/TicketsTable";
 import { ChannelAnalytics } from "@/components/ChannelAnalytics";
 import { MonthSelector } from "@/components/MonthSelector";
@@ -19,15 +15,14 @@ import { GenesysTicketForm } from "@/components/GenesysTicketForm";
 import { FCRMetric } from "@/components/FCRMetric";
 import { DailyTarget } from "@/components/DailyTarget";
 import { SmartRatingDialog } from "@/components/SmartRatingDialog";
-import { HoldTicketsSection, HoldTicket } from "@/components/HoldTicketsSection";
-import { DailyNotesSection, DailyNote } from "@/components/DailyNotesSection";
+import { HoldTicketsSection } from "@/components/HoldTicketsSection";
+import { DailyNotesSection } from "@/components/DailyNotesSection";
 import { BreakScheduler } from "@/components/BreakScheduler";
 import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
 import SurveyConversion from "@/components/SurveyConversion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ThreeMonthPerformance, MonthMetrics } from "@/components/ThreeMonthPerformance";
 
 interface WeeklyData {
