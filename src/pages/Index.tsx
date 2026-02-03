@@ -24,6 +24,8 @@ import SurveyConversion from "@/components/SurveyConversion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ThreeMonthPerformance, MonthMetrics } from "@/components/ThreeMonthPerformance";
+import { PerformanceData } from "@/lib/types";
+import { STATIC_SCHEDULE } from "@/lib/staticSchedule";
 
 interface WeeklyData {
   week: number;
@@ -248,7 +250,7 @@ const Index = () => {
     if (!user) return;
     
     try {
-      const { data: perfData, error } = await supabase
+      const { data: perfDataRaw, error } = await supabase
         .from('performance_data')
         .select('*, tickets(*)')
         .eq('year', selectedYear)
@@ -257,26 +259,40 @@ const Index = () => {
         .maybeSingle();
 
       if (error) throw error;
+      
+      const perfData = perfDataRaw as unknown as PerformanceData;
 
       if (perfData) {
         setPerformanceId(perfData.id);
-        setOffDays((perfData as any).off_days);
+        
+        // Use DB off days or fallback to static schedule
+        let loadedOffDays = perfData.off_days || null;
+        if (!loadedOffDays || loadedOffDays.length === 0) {
+          loadedOffDays = STATIC_SCHEDULE
+            .filter(s => {
+              const [y, m] = s.date.split('-').map(Number);
+              return y === selectedYear && (m - 1) === selectedMonth && s.is_off_day;
+            })
+            .map(s => parseInt(s.date.split('-')[2], 10));
+        }
+        setOffDays(loadedOffDays);
+
         const loadedData = {
           good: perfData.good || 0,
           bad: perfData.bad || 0,
           karmaBad: perfData.karma_bad || 0,
           genesysGood: perfData.genesys_good || 0,
           genesysBad: perfData.genesys_bad || 0,
-          fcr: typeof (perfData as any).fcr === 'number' ? (perfData as any).fcr : 0,
+          fcr: perfData.fcr || 0,
           goodByChannel: {
-            phone: (perfData as any).good_phone || 0,
-            chat: (perfData as any).good_chat || 0,
-            email: (perfData as any).good_email || 0,
+            phone: perfData.good_phone || 0,
+            chat: perfData.good_chat || 0,
+            email: perfData.good_email || 0,
           },
           badByChannel: {
-            phone: (perfData as any).bad_phone || 0,
-            chat: (perfData as any).bad_chat || 0,
-            email: (perfData as any).bad_email || 0,
+            phone: perfData.bad_phone || 0,
+            chat: perfData.bad_chat || 0,
+            email: perfData.bad_email || 0,
           },
           tickets: (perfData.tickets || []).map((t: any) => ({
             id: t.id,
@@ -1539,11 +1555,11 @@ const Index = () => {
 
           {activeTab === "notes" && (
           <div className="space-y-6 animate-fade-in focus-visible:outline-none">
-              <DailyNotesSection performanceId={performanceId} />
               <div className="space-y-4">
                 <h3 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Break Time ⏱️</h3>
                 <BreakScheduler />
               </div>
+              <DailyNotesSection performanceId={performanceId} />
           </div>
           )}
 
