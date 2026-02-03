@@ -62,7 +62,7 @@ export const DailyNotesSection = ({ performanceId }: DailyNotesSectionProps) => 
       toast.success("Note added!");
       setNewNote("");
     },
-    onError: (err) => toast.error("Failed to add note"),
+    onError: () => toast.error("Failed to add note"),
   });
 
   const deleteMutation = useMutation({

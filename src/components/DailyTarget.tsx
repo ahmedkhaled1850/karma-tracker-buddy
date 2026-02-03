@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Target, CheckCircle, Flame, TrendingUp, AlertTriangle, Trophy, Star } from "lucide-react";
+import { Target, CheckCircle, Flame, AlertTriangle, Trophy, Star } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface DailyTargetProps {
@@ -164,7 +164,6 @@ export const DailyTarget = ({
 
   const { 
     levels,
-    currentLevel,
     currentKarma,
     todayProgress, 
     isCompleted, 

@@ -149,7 +149,7 @@ const Index = () => {
   const [threeMonthsMetrics, setThreeMonthsMetrics] = useState<MonthMetrics[]>([]);
 
   // 3-month comparison UI state
-  const [includeKarmaInCSAT, setIncludeKarmaInCSAT] = useState<boolean>(false);
+  const [includeKarmaInCSAT] = useState<boolean>(false);
 
   // Available months for selection (last 12 months)
   const availableMonthsForComparison = useMemo(() => {
@@ -1039,16 +1039,8 @@ const Index = () => {
     [isSaving, saveToDatabase]
   );
 
-  const updateGoodRatings = useCallback((channel: keyof MonthlyData["goodByChannel"], value: number) => {
-    setData((prev) => ({
-      ...prev,
-      goodByChannel: { ...prev.goodByChannel, [channel]: Math.max(0, value) },
-    }));
-  }, []);
-
   const totalGood = useMemo(() => data.good + data.genesysGood, [data.good, data.genesysGood]);
   const totalBad = useMemo(() => data.bad + data.genesysBad, [data.bad, data.genesysBad]);
-  const badColor: "primary" = "primary";
 
   // Smart rating handlers
   const openSmartDialog = useCallback((type: 'good' | 'bad') => {
@@ -1217,30 +1209,6 @@ const Index = () => {
   const totalKarmaBase = useMemo(() => totalGood + totalBad + data.karmaBad, [totalGood, totalBad, data.karmaBad]);
   const karma = useMemo(() => totalKarmaBase > 0 ? (totalGood / totalKarmaBase) * 100 : 0, [totalGood, totalKarmaBase]);
 
-  const genesysGoodByChannel = useMemo(() => {
-    const counts = { phone: 0, chat: 0, email: 0 };
-    genesysTickets.forEach(t => {
-      const isGood = t.ratingScore >= 7 && t.ratingScore <= 9;
-      if (isGood) {
-        const ch = (t.channel || "Phone").toLowerCase() as keyof typeof counts;
-        counts[ch] += 1;
-      }
-    });
-    return counts;
-  }, [genesysTickets]);
-
-  const genesysBadByChannel = useMemo(() => {
-    const counts = { phone: 0, chat: 0, email: 0 };
-    genesysTickets.forEach(t => {
-      const isBad = !(t.ratingScore >= 7 && t.ratingScore <= 9);
-      if (isBad) {
-        const ch = (t.channel || "Phone").toLowerCase() as keyof typeof counts;
-        counts[ch] += 1;
-      }
-    });
-    return counts;
-  }, [genesysTickets]);
-
   // Channel distribution for good ratings: use goodByChannel from performance_data
   // These fields track the actual channel distribution of good ratings
   const goodByChannelWithGenesys = useMemo(() => {
@@ -1306,39 +1274,6 @@ const Index = () => {
     } catch {}
   }, [totalGood, totalBad, data.karmaBad]);
   
-  const insights = useMemo(() => {
-    if (!monthlyChangeLog || monthlyChangeLog.length === 0) {
-      return { bestHour: null, forecastKarma: null };
-    }
-    const byHour: Record<string, number> = {};
-    const dayAgg: Record<string, { good: number; bad: number }> = {};
-    monthlyChangeLog.forEach((c: any) => {
-      const isGood = c.field_name === 'good' || c.field_name === 'genesys_good';
-      const isBad = c.field_name === 'bad' || c.field_name === 'genesys_bad' || c.field_name === 'karma_bad';
-      const dt = c.created_at ? new Date(c.created_at) : new Date(c.change_date);
-      const hourKey = dt.toLocaleTimeString([], { hour: '2-digit' });
-      const dayKey = dt.toISOString().split('T')[0];
-      if (isGood) {
-        byHour[hourKey] = (byHour[hourKey] || 0) + Math.max(0, c.change_amount);
-      }
-      if (!dayAgg[dayKey]) dayAgg[dayKey] = { good: 0, bad: 0 };
-      if (isGood) dayAgg[dayKey].good += Math.max(0, c.change_amount);
-      if (isBad) dayAgg[dayKey].bad += Math.max(0, c.change_amount);
-    });
-    let bestHour: { hour: string; count: number } | null = null;
-    Object.entries(byHour).forEach(([h, count]) => {
-      if (!bestHour || count > bestHour.count) bestHour = { hour: h, count };
-    });
-    const days = Object.values(dayAgg);
-    const avgGood = days.length ? days.reduce((s, d) => s + d.good, 0) / days.length : 0;
-    const avgBad = days.length ? days.reduce((s, d) => s + d.bad, 0) / days.length : 0;
-    const remaining = remainingWorkingDays ?? 0;
-    const projectedGood = totalGood + Math.round(avgGood * remaining);
-    const projectedBad = totalBad + Math.round(avgBad * remaining);
-    const base = projectedGood + projectedBad + data.karmaBad;
-    const forecastKarma = base > 0 ? (projectedGood / base) * 100 : null;
-    return { bestHour, forecastKarma };
-  }, [monthlyChangeLog, remainingWorkingDays, totalGood, totalBad, data.karmaBad]);
 
   const exportToCSV = () => {
     const monthName = new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long" });
@@ -1586,7 +1521,6 @@ const Index = () => {
                   goodRatings={goodByChannelWithGenesys}
                   badRatings={badByChannel}
                   karmaRatings={karmaByChannel}
-                  totalGood={totalGood}
                 />
 
               {/* 3-Month Performance */}
