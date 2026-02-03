@@ -38,6 +38,9 @@ const DEFAULT_WORK_DAYS: Record<DayOfWeek, boolean> = {
   saturday: false,
 };
 
+import { STATIC_SCHEDULE } from "@/lib/staticSchedule";
+import { PerformanceData } from "@/lib/types";
+
 export const WorkScheduleSettings = ({ 
   selectedMonth, 
   selectedYear, 
@@ -93,7 +96,7 @@ export const WorkScheduleSettings = ({
       }
 
       try {
-        const { data, error } = await supabase
+        const { data: rawData, error } = await supabase
           .from('performance_data')
           .select('off_days')
           .eq('id', performanceId)
@@ -101,14 +104,23 @@ export const WorkScheduleSettings = ({
 
         if (error) throw error;
 
-        const offDaysArray = (data as any)?.off_days;
-        if (offDaysArray) {
+        const data = rawData as unknown as Pick<PerformanceData, 'off_days'>;
+        const offDaysArray = data?.off_days;
+        if (offDaysArray && offDaysArray.length > 0) {
           const dates = offDaysArray.map((day: number) => {
             return new Date(selectedYear, selectedMonth, day);
           });
           setOffDays(dates);
         } else {
-          setOffDays([]);
+          // Load from static schedule if no DB data
+          const staticOffDays = STATIC_SCHEDULE
+            .filter(s => {
+              const d = new Date(s.date);
+              return s.is_off_day && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+            })
+            .map(s => new Date(s.date));
+            
+          setOffDays(staticOffDays);
         }
       } catch (error) {
         console.error('Error fetching off days:', error);
@@ -250,7 +262,7 @@ export const WorkScheduleSettings = ({
       // Save off days to performance_data
       const { error: perfError } = await supabase
         .from('performance_data')
-        .update({ off_days: dayNumbers } as any)
+        .update({ off_days: dayNumbers } as unknown as any)
         .eq('id', currentPerfId);
 
       if (perfError) throw perfError;

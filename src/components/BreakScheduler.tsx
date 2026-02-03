@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Bell, TimerReset, AlarmClockCheck, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { getStaticShift, formatTime12H } from "@/lib/staticSchedule";
+import { DailyShift } from "@/lib/types";
 
 type BreakKey = "break1" | "break2" | "break3";
 
@@ -44,8 +45,6 @@ export const BreakScheduler = () => {
   const [nextCountdown, setNextCountdown] = useState<string>("");
   const [shiftStart, setShiftStart] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const initialLoadRef = useRef(true);
 
   const shiftStartDate = useMemo(() => {
@@ -77,7 +76,7 @@ export const BreakScheduler = () => {
     const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0, 0);
     return startTomorrow;
   }, [shiftStart, nextCountdown]); // Re-calculate when countdown updates (every second) or shiftStart changes
-
+  
   
   const shiftEndDate = useMemo(() => {
     if (!shiftStartDate) return null;
@@ -95,33 +94,74 @@ export const BreakScheduler = () => {
       }
       
       try {
-        const { data, error } = await supabase
+        // 1. Load global settings first
+        const { data: globalSettings } = await supabase
           .from('user_settings')
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (error) throw error;
+        let initialSchedule = {
+          break1: "11:00",
+          break2: "14:00",
+          break3: "17:00",
+        };
+        let initialShiftStart = "";
 
-        if (data) {
-          setSchedule({
-            break1: data.break1_time || "11:00",
-            break2: data.break2_time || "14:00",
-            break3: data.break3_time || "17:00",
-          });
-          setShiftStart(data.shift_start_time || "");
-          try {
-            const lsSchedule = {
-              break1: data.break1_time || "11:00",
-              break2: data.break2_time || "14:00",
-              break3: data.break3_time || "17:00",
-            };
-            localStorage.setItem("ktb_break_schedule", JSON.stringify(lsSchedule));
-            if (data.shift_start_time) {
-              localStorage.setItem("ktb_shift_start_time", data.shift_start_time);
-            }
-          } catch {}
+        if (globalSettings) {
+          initialSchedule = {
+            break1: globalSettings.break1_time || "11:00",
+            break2: globalSettings.break2_time || "14:00",
+            break3: globalSettings.break3_time || "17:00",
+          };
+          initialShiftStart = globalSettings.shift_start_time || "";
         }
+
+        // 2. Load today's shift (DB or Static) to override
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        
+        // Try DB first
+        const { data: dbShift } = await supabase
+          .from('daily_shifts')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('shift_date', dateStr)
+          .maybeSingle();
+
+        let currentShift: Partial<DailyShift> | null = dbShift as unknown as DailyShift;
+
+        // If not in DB, try static
+        if (!currentShift) {
+           const staticData = getStaticShift(dateStr);
+           if (staticData && !staticData.is_off_day) {
+             currentShift = {
+               break1_time: staticData.break1_time || null,
+               break2_time: staticData.break2_time || null,
+               break3_time: staticData.break3_time || null,
+               shift_start: staticData.shift_start || null,
+             };
+           }
+        }
+
+        // Apply shift data if available
+        if (currentShift) {
+          if (currentShift.break1_time) initialSchedule.break1 = currentShift.break1_time;
+          if (currentShift.break2_time) initialSchedule.break2 = currentShift.break2_time;
+          if (currentShift.break3_time) initialSchedule.break3 = currentShift.break3_time;
+          if (currentShift.shift_start) initialShiftStart = currentShift.shift_start;
+        }
+
+        setSchedule(initialSchedule);
+        setShiftStart(initialShiftStart);
+
+        try {
+          localStorage.setItem("ktb_break_schedule", JSON.stringify(initialSchedule));
+          if (initialShiftStart) {
+            localStorage.setItem("ktb_shift_start_time", initialShiftStart);
+          }
+        } catch {}
+
         initialLoadRef.current = false;
       } catch (error) {
         console.error("Error loading settings:", error);
@@ -132,81 +172,6 @@ export const BreakScheduler = () => {
 
     loadSettings();
   }, [user]);
-
-  // Handle schedule changes with auto-save
-  const handleScheduleChange = useCallback((key: BreakKey, value: string) => {
-    setSchedule(prev => ({ ...prev, [key]: value }));
-    setHasChanges(true);
-  }, []);
-
-  // Handle shift start change with auto-save
-  const handleShiftStartChange = useCallback((value: string) => {
-    setShiftStart(value);
-    setHasChanges(true);
-  }, []);
-
-  // Auto-save settings to database
-  const autoSaveSettings = useCallback(async () => {
-    if (!user) return;
-
-    setSaving(true);
-    try {
-      const { data: existing } = await supabase
-        .from('user_settings')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (existing) {
-        const { error } = await supabase
-          .from('user_settings')
-          .update({
-            break1_time: schedule.break1,
-            break2_time: schedule.break2,
-            break3_time: schedule.break3,
-            shift_start_time: shiftStart || null,
-          })
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('user_settings')
-          .insert({
-            user_id: user.id,
-            break1_time: schedule.break1,
-            break2_time: schedule.break2,
-            break3_time: schedule.break3,
-            shift_start_time: shiftStart || null,
-          });
-
-        if (error) throw error;
-      }
-
-      setHasChanges(false);
-      // Dispatch custom event for AppLayout to update immediately
-      window.dispatchEvent(new Event("ktb-schedule-updated"));
-      clearScheduled();
-      scheduleNotifications();
-      scheduleAutoStart();
-      scheduleShiftNotifications();
-    } catch (error) {
-      console.error("Error saving settings:", error);
-    } finally {
-      setSaving(false);
-    }
-  }, [user, schedule, shiftStart]);
-
-  // Auto-save on changes (debounced)
-  useEffect(() => {
-    if (!hasChanges || loading || initialLoadRef.current) return;
-    
-    const timeout = setTimeout(() => {
-      autoSaveSettings();
-    }, 1000);
-    
-    return () => clearTimeout(timeout);
-  }, [hasChanges, schedule, shiftStart, autoSaveSettings, loading]);
 
   useEffect(() => {
     localStorage.setItem("ktb_break_log", JSON.stringify(breakLog));
@@ -541,7 +506,7 @@ export const BreakScheduler = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <AlarmClockCheck className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold text-lg">Break Schedule Setup</h3>
+            <h3 className="font-semibold text-lg">Break Schedule</h3>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -551,29 +516,24 @@ export const BreakScheduler = () => {
               <Bell className="mr-2 h-4 w-4" />
               {canNotify ? "Notifications On" : "Enable Notifications"}
             </Button>
-            {saving && (
-              <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
-            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="space-y-2 rounded-lg border p-4">
-            <Label className="text-xs">Shift Start Time</Label>
-            <Input
-              type="time"
-              value={shiftStart}
-              onChange={(e) => handleShiftStartChange(e.target.value)}
-            />
+          <div className="space-y-2 rounded-lg border p-4 bg-muted/20">
+            <Label className="text-xs text-muted-foreground">Shift Start Time</Label>
+            <div className="text-2xl font-mono font-medium">
+              {formatTime12H(shiftStart)}
+            </div>
             <div className="text-xs text-muted-foreground">
-              {shiftStartDate ? `Shift ends at ${shiftEndDate?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "9-hour shift"}
+              {shiftStartDate ? `Ends at ${shiftEndDate?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "9-hour shift"}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["break1", "break2", "break3"] as BreakKey[]).map((key) => (
-            <div key={key} className="space-y-3 rounded-lg border p-4">
+            <div key={key} className="space-y-3 rounded-lg border p-4 bg-muted/20">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{BREAK_LABELS[key]}</span>
                 <span className="text-xs text-muted-foreground">
@@ -581,21 +541,16 @@ export const BreakScheduler = () => {
                 </span>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">Start Time</Label>
-                <Input
-                  type="time"
-                  value={schedule[key]}
-                  onChange={(e) => handleScheduleChange(key, e.target.value)}
-                />
+                <Label className="text-xs text-muted-foreground">Start Time</Label>
+                <div className="text-xl font-mono">
+                  {formatTime12H(schedule[key])}
+                </div>
               </div>
               <div className="text-xs text-muted-foreground text-center">
-                Starts automatically at scheduled time
+                Automatic Schedule
               </div>
             </div>
           ))}
-        </div>
-        <div className="mt-4 text-xs text-muted-foreground">
-          Changes are saved automatically
         </div>
       </Card>
 

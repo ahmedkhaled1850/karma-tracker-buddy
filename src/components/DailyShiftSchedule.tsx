@@ -10,32 +10,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar, Save, Loader2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { getStaticShift, formatTime12H } from "@/lib/staticSchedule";
+import { DailyShift } from "@/lib/types";
 
 interface DailyShiftScheduleProps {
   selectedMonth: number;
   selectedYear: number;
 }
 
-interface DailyShift {
-  id?: string;
-  user_id: string;
-  shift_date: string;
-  shift_start: string | null;
-  shift_end: string | null;
-  break1_time: string | null;
-  break1_duration: number;
-  break2_time: string | null;
-  break2_duration: number;
-  break3_time: string | null;
-  break3_duration: number;
-  notes: string | null;
-  is_off_day: boolean;
-}
-
 const formatTimeDisplay = (time: string | null, duration?: number): string => {
   if (!time) return "-";
+  const timeStr = formatTime12H(time);
   const durationStr = duration ? ` (${duration}m)` : "";
-  return `${time}${durationStr}`;
+  return `${timeStr}${durationStr}`;
 };
 
 export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftScheduleProps) => {
@@ -52,7 +39,10 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftSc
     const totalDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     for (let day = 1; day <= totalDays; day++) {
       const date = new Date(selectedYear, selectedMonth, day);
-      days.push(date.toISOString().split('T')[0]);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const dayStr = String(date.getDate()).padStart(2, '0');
+      days.push(`${year}-${month}-${dayStr}`);
     }
     return days;
   }, [selectedMonth, selectedYear]);
@@ -86,6 +76,25 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftSc
           if (existing) {
             return existing as DailyShift;
           }
+          
+          const staticShift = getStaticShift(date);
+          if (staticShift) {
+            return {
+              user_id: user.id,
+              shift_date: date,
+              shift_start: staticShift.shift_start || null,
+              shift_end: staticShift.shift_end || null,
+              break1_time: staticShift.break1_time || null,
+              break1_duration: staticShift.break1_duration || 15,
+              break2_time: staticShift.break2_time || null,
+              break2_duration: staticShift.break2_duration || 30,
+              break3_time: staticShift.break3_time || null,
+              break3_duration: staticShift.break3_duration || 15,
+              notes: staticShift.notes || null,
+              is_off_day: staticShift.is_off_day,
+            };
+          }
+
           return {
             user_id: user.id,
             shift_date: date,
@@ -268,24 +277,50 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftSc
             </TableRow>
           </TableHeader>
           <TableBody>
-            {shifts.map((shift) => (
+            {shifts.map((shift) => {
+              const isCompleted = (() => {
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                
+                if (shift.shift_date < todayStr) return true;
+                
+                if (shift.shift_date === todayStr) {
+                  // If it's an off day today, we don't mark it as completed/crossed out yet unless day is over?
+                  // User said "shift finished". If no shift (off day), maybe wait until tomorrow.
+                  // But for "past days", definitely yes.
+                  // Let's stick to strict shift end check for today.
+                  if (shift.is_off_day) return false; 
+                  
+                  if (shift.shift_end) {
+                    const [h, m] = shift.shift_end.split(':').map(Number);
+                    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+                    return now > end;
+                  }
+                }
+                return false;
+              })();
+
+              return (
               <TableRow 
                 key={shift.shift_date}
-                className={`cursor-pointer hover:bg-muted/50 ${shift.is_off_day ? 'bg-destructive/5' : ''}`}
+                className={`cursor-pointer hover:bg-muted/50 transition-colors
+                  ${shift.is_off_day && !isCompleted ? 'bg-destructive/5' : ''}
+                  ${isCompleted ? 'bg-green-50/50 text-green-700 dark:bg-green-900/10 dark:text-green-400' : ''}
+                `}
                 onClick={() => handleEditShift(shift)}
               >
-                <TableCell className="font-medium">{formatDate(shift.shift_date)}</TableCell>
-                <TableCell className="text-muted-foreground">{getDayName(shift.shift_date)}</TableCell>
-                <TableCell>
-                  {shift.is_off_day ? <span className="text-destructive font-medium">OFF</span> : (shift.shift_start || "-")}
+                <TableCell className={`font-medium ${isCompleted ? 'line-through' : ''}`}>{formatDate(shift.shift_date)}</TableCell>
+                <TableCell className={`text-muted-foreground ${isCompleted ? 'line-through' : ''}`}>{getDayName(shift.shift_date)}</TableCell>
+                <TableCell className={isCompleted ? 'line-through' : ''}>
+                  {shift.is_off_day ? <span className="text-destructive font-medium">OFF</span> : formatTime12H(shift.shift_start)}
                 </TableCell>
-                <TableCell>
-                  {shift.is_off_day ? <span className="text-destructive font-medium">OFF</span> : (shift.shift_end || "-")}
+                <TableCell className={isCompleted ? 'line-through' : ''}>
+                  {shift.is_off_day ? <span className="text-destructive font-medium">OFF</span> : formatTime12H(shift.shift_end)}
                 </TableCell>
-                <TableCell>{shift.is_off_day ? "-" : formatTimeDisplay(shift.break1_time, shift.break1_duration)}</TableCell>
-                <TableCell>{shift.is_off_day ? "-" : formatTimeDisplay(shift.break2_time, shift.break2_duration)}</TableCell>
-                <TableCell>{shift.is_off_day ? "-" : formatTimeDisplay(shift.break3_time, shift.break3_duration)}</TableCell>
-                <TableCell className="max-w-[200px] truncate">{shift.notes || "-"}</TableCell>
+                <TableCell className={isCompleted ? 'line-through' : ''}>{shift.is_off_day ? "-" : formatTimeDisplay(shift.break1_time, shift.break1_duration)}</TableCell>
+                <TableCell className={isCompleted ? 'line-through' : ''}>{shift.is_off_day ? "-" : formatTimeDisplay(shift.break2_time, shift.break2_duration)}</TableCell>
+                <TableCell className={isCompleted ? 'line-through' : ''}>{shift.is_off_day ? "-" : formatTimeDisplay(shift.break3_time, shift.break3_duration)}</TableCell>
+                <TableCell className={`max-w-[200px] truncate ${isCompleted ? 'line-through' : ''}`}>{shift.notes || "-"}</TableCell>
                 <TableCell>
                   {shift.id && (
                     <Button
@@ -301,7 +336,8 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftSc
                   )}
                 </TableCell>
               </TableRow>
-            ))}
+            );
+          })}
           </TableBody>
         </Table>
       </div>

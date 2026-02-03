@@ -10,7 +10,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
 import { Menu, LayoutDashboard, Settings, LogOut, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-
+import { getStaticShift } from "@/lib/staticSchedule";
+import { DailyShift } from "@/lib/types";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -67,6 +68,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const labelFor = (key: BreakKey) =>
     key === "break1" ? "First Break" : key === "break2" ? "Second Break" : "Third Break";
   const formatHMS = (s: number) => {
+    if (isNaN(s)) return "00:00:00";
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
@@ -78,29 +80,99 @@ export default function AppLayout({ children }: AppLayoutProps) {
     break3: "17:00",
   });
   const [shiftStartStr, setShiftStartStr] = useState<string>("");
+  const [shiftEndStr, setShiftEndStr] = useState<string>("");
   
+  const [breakDurations, setBreakDurations] = useState<Record<BreakKey, number>>({
+    break1: 15 * 60,
+    break2: 30 * 60,
+    break3: 15 * 60,
+  });
+
   // Load break schedule from database
   useEffect(() => {
     const loadScheduleFromDB = async () => {
       if (!user?.id) return;
       
       try {
-        const { data, error } = await supabase
+        // 1. Load global settings first
+        const { data: globalSettings } = await supabase
           .from('user_settings')
           .select('break1_time, break2_time, break3_time, shift_start_time')
           .eq('user_id', user.id)
           .maybeSingle();
         
-        if (!error && data) {
-          setBreakSchedule({
-            break1: data.break1_time || "11:00",
-            break2: data.break2_time || "14:00",
-            break3: data.break3_time || "17:00",
-          });
-          if (data.shift_start_time) {
-            setShiftStartStr(data.shift_start_time);
-          }
+        let initialSchedule = {
+          break1: "11:00",
+          break2: "14:00",
+          break3: "17:00",
+        };
+        let initialDurations = {
+          break1: 15 * 60,
+          break2: 30 * 60,
+          break3: 15 * 60,
+        };
+        let initialShiftStart = "";
+        let initialShiftEnd = "";
+
+        if (globalSettings) {
+          initialSchedule = {
+            break1: globalSettings.break1_time || "11:00",
+            break2: globalSettings.break2_time || "14:00",
+            break3: globalSettings.break3_time || "17:00",
+          };
+          initialShiftStart = globalSettings.shift_start_time || "";
         }
+
+        // 2. Load today's shift (DB or Static) to override
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        
+        // Try DB first
+        const { data: dbShift } = await supabase
+          .from('daily_shifts')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('shift_date', dateStr)
+          .maybeSingle();
+
+        let currentShift: Partial<DailyShift> | null = dbShift as unknown as DailyShift;
+
+        // If not in DB, try static
+        if (!currentShift) {
+           const staticData = getStaticShift(dateStr);
+           if (staticData && !staticData.is_off_day) {
+             currentShift = {
+               break1_time: staticData.break1_time || null,
+               break1_duration: staticData.break1_duration,
+               break2_time: staticData.break2_time || null,
+               break2_duration: staticData.break2_duration,
+               break3_time: staticData.break3_time || null,
+               break3_duration: staticData.break3_duration,
+               shift_start: staticData.shift_start || null,
+               shift_end: staticData.shift_end || null,
+             };
+           }
+        }
+
+        // Apply shift data if available
+        if (currentShift) {
+          if (currentShift.break1_time) initialSchedule.break1 = currentShift.break1_time;
+          if (currentShift.break2_time) initialSchedule.break2 = currentShift.break2_time;
+          if (currentShift.break3_time) initialSchedule.break3 = currentShift.break3_time;
+          
+          if (currentShift.break1_duration) initialDurations.break1 = currentShift.break1_duration * 60;
+          if (currentShift.break2_duration) initialDurations.break2 = currentShift.break2_duration * 60;
+          if (currentShift.break3_duration) initialDurations.break3 = currentShift.break3_duration * 60;
+
+          if (currentShift.shift_start) initialShiftStart = currentShift.shift_start;
+          if (currentShift.shift_end) initialShiftEnd = currentShift.shift_end;
+        }
+
+        setBreakSchedule(initialSchedule);
+        setBreakDurations(initialDurations);
+        setShiftStartStr(initialShiftStart);
+        setShiftEndStr(initialShiftEnd);
+
       } catch (err) {
         console.error('Error loading break schedule:', err);
       }
@@ -166,14 +238,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const [h, m] = shiftStartStr.split(":").map((x) => parseInt(x, 10));
     if (isNaN(h) || isNaN(m)) return null;
 
+    // Calculate duration
+    let duration = 9 * 3600 * 1000;
+    if (shiftEndStr) {
+      const [eh, em] = shiftEndStr.split(":").map((x) => parseInt(x, 10));
+      if (!isNaN(eh) && !isNaN(em)) {
+        let startMin = h * 60 + m;
+        let endMin = eh * 60 + em;
+        if (endMin <= startMin) endMin += 24 * 60; // Crosses midnight
+        duration = (endMin - startMin) * 60 * 1000;
+      }
+    }
+
     const startYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, h, m, 0, 0);
-    const endYesterday = new Date(startYesterday.getTime() + 9 * 3600 * 1000);
+    const endYesterday = new Date(startYesterday.getTime() + duration);
     if (now >= startYesterday && now <= endYesterday) {
       return { start: startYesterday, end: endYesterday };
     }
 
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-    const endToday = new Date(startToday.getTime() + 9 * 3600 * 1000);
+    const endToday = new Date(startToday.getTime() + duration);
     if (now >= startToday && now <= endToday) {
       return { start: startToday, end: endToday };
     }
@@ -183,15 +267,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
 
     const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0, 0);
-    const endTomorrow = new Date(startTomorrow.getTime() + 9 * 3600 * 1000);
+    const endTomorrow = new Date(startTomorrow.getTime() + duration);
     return { start: startTomorrow, end: endTomorrow };
   };
 
-  const shiftWindow = useMemo(() => getShiftWindow(new Date()), [shiftStartStr]);
+  const shiftWindow = useMemo(() => getShiftWindow(new Date()), [shiftStartStr, shiftEndStr]);
   const shiftStartDate = shiftWindow?.start ?? null;
   const shiftEndDate = shiftWindow?.end ?? null;
-
-  const DURATIONS: Record<BreakKey, number> = { break1: 15 * 60, break2: 30 * 60, break3: 15 * 60 };
 
   const nextBreak = useMemo(() => {
     if (!shiftStartDate || !shiftEndDate) return null;
@@ -235,10 +317,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
     // If a break is active, show break countdown
     if (active) {
-      const dur = DURATIONS[active.key];
+      const dur = breakDurations[active.key] || 15 * 60;
       const elapsed = Math.floor((nowMs - active.start) / 1000);
-      const left = Math.max(0, dur - elapsed);
-      return `Break left ${formatHMS(left)}`;
+      if (elapsed < dur) {
+        const left = Math.max(0, dur - elapsed);
+        return `Break left ${formatHMS(left)}`;
+      }
+      // If break is expired, fall through to normal schedule display
     }
 
     const now = new Date();
@@ -320,7 +405,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       if (originalTitleRef.current) document.title = originalTitleRef.current;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [breakSchedule, activeBreakInfo, shiftStartStr]);
+  }, [breakSchedule, activeBreakInfo, shiftStartStr, shiftEndStr, breakDurations]);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
