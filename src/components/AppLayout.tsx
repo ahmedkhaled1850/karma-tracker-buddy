@@ -4,13 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useIsFetching, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
 import { Menu, LayoutDashboard, Settings, LogOut, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -50,7 +50,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const email = user?.email || "";
   const initials = name ? name.slice(0, 2).toUpperCase() : "";
 
-  const isFetching = useIsFetching();
+  
   const [initialLoading, setInitialLoading] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setInitialLoading(false), 400);
@@ -66,15 +66,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   type BreakKey = "break1" | "break2" | "break3";
   const labelFor = (key: BreakKey) =>
     key === "break1" ? "First Break" : key === "break2" ? "Second Break" : "Third Break";
-  const parseTimeToDate = (time: string) => {
-    const [h, m] = time.split(":").map((x) => parseInt(x, 10));
-    const now = new Date();
-    const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-    if (dt.getTime() <= now.getTime()) {
-      dt.setDate(dt.getDate() + 1);
-    }
-    return dt;
-  };
   const formatHMS = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -128,44 +119,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [nextText, setNextText] = useState<string>("");
   const originalTitleRef = useRef<string | null>(null);
   const navigate = useNavigate();
-  const canNotify = ((): boolean => {
-    return ("Notification" in window) && Notification.permission === "granted";
-  })();
-  const requestNotificationPermission = async () => {
-    if (!("Notification" in window)) return;
-    if (Notification.permission === "default") {
-      try {
-        await Notification.requestPermission();
-      } catch {}
-    }
-  };
-  const playBeep = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.value = 880;
-      o.connect(g);
-      g.connect(ctx.destination);
-      g.gain.setValueAtTime(0.001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-      o.start();
-      setTimeout(() => {
-        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
-        o.stop(ctx.currentTime + 0.85);
-      }, 800);
-    } catch {}
-  };
-  const notify = (title: string, body: string) => {
-    toast.message(title, { description: body });
-    if ("Notification" in window && Notification.permission === "granted") {
-      try {
-        new Notification(title, { body });
-      } catch {}
-    }
-    playBeep();
-  };
   const [activeBreakInfo, setActiveBreakInfo] = useState<{ key: BreakKey; start: number } | null>(() => {
     const v = localStorage.getItem("ktb_active_break");
     if (!v) return null;

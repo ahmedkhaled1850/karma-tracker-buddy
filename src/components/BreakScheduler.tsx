@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Bell, Coffee, TimerReset, AlarmClockCheck, Loader2 } from "lucide-react";
+import { Bell, TimerReset, AlarmClockCheck, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -417,15 +417,6 @@ export const BreakScheduler = () => {
     timeoutsRef.current = [];
   };
 
-  function parseTimeToDate(time: string) {
-    const [h, m] = time.split(":").map((x) => parseInt(x, 10));
-    const now = new Date();
-    const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
-    if (dt.getTime() <= now.getTime()) {
-      dt.setDate(dt.getDate() + 1);
-    }
-    return dt;
-  }
 
   function scheduleAutoStart() {
     autoStartTimeoutsRef.current.forEach((id) => window.clearTimeout(id));

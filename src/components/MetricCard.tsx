@@ -12,13 +12,6 @@ interface MetricCardProps {
 }
 
 export const MetricCard = ({ title, value, onIncrement, onDecrement, color = "primary", icon: Icon }: MetricCardProps) => {
-  const colorClasses = {
-    primary: "text-primary bg-primary/10",
-    destructive: "text-destructive bg-destructive/10",
-    warning: "text-warning bg-warning/10",
-    success: "text-success bg-success/10",
-  };
-
   const iconColorClasses = {
     primary: "text-primary",
     destructive: "text-destructive",

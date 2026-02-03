@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Phone, MessageSquare, Mail } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useMemo } from "react";
+
 
 interface ChannelData {
   phone: number;
@@ -13,10 +13,9 @@ interface ChannelAnalyticsProps {
   goodRatings: ChannelData;
   badRatings: ChannelData;
   karmaRatings: ChannelData;
-  totalGood: number; // Total good ratings from all sources
 }
 
-export const ChannelAnalytics = ({ goodRatings, badRatings, karmaRatings, totalGood }: ChannelAnalyticsProps) => {
+export const ChannelAnalytics = ({ goodRatings, badRatings, karmaRatings }: ChannelAnalyticsProps) => {
 
   const chartData = [
     {
