@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Settings, LogOut, ChevronLeft, ChevronRight, Calendar, BarChart3, NotebookText, ListChecks } from "lucide-react";
+import { Settings, LogOut, ChevronLeft, ChevronRight, Calendar, BarChart3, NotebookText, ListChecks, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,26 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
   const location = useLocation();
   const { signOut } = useAuth();
   const [metrics, setMetrics] = useState<{ totalGood: number; totalBad: number; karmaBad: number }>({ totalGood: 0, totalBad: 0, karmaBad: 0 });
+  const [activeTab, setActiveTab] = useState(() => {
+    try { return localStorage.getItem("ktb_active_tab") || "overview"; } catch { return "overview"; }
+  });
+
+  useEffect(() => {
+    const tabHandler = (e: Event) => {
+      const ce = e as CustomEvent<string>;
+      if (ce.detail) setActiveTab(ce.detail);
+    };
+    const storageHandler = (e: StorageEvent) => {
+      if (e.key === "ktb_active_tab" && e.newValue) setActiveTab(e.newValue);
+    };
+    window.addEventListener("ktb_tab_change", tabHandler as EventListener);
+    window.addEventListener("storage", storageHandler);
+    return () => {
+      window.removeEventListener("ktb_tab_change", tabHandler as EventListener);
+      window.removeEventListener("storage", storageHandler);
+    };
+  }, []);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ totalGood: number; totalBad: number; karmaBad: number }>;
@@ -29,10 +49,26 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
     return () => window.removeEventListener("ktb_metrics_update", handler as EventListener);
   }, []);
 
-  const links = [
+  const tabLinks = [
+    { name: "Overview 📊", tab: "overview", icon: BarChart3 },
+    { name: "Tickets 🎫", tab: "tickets", icon: ListChecks },
+    { name: "Analytics 📈", tab: "analytics", icon: BarChart3 },
+    { name: "Notes & Schedule 📝", tab: "notes", icon: NotebookText },
+    { name: "Log 📋", tab: "log", icon: ClipboardList },
+  ];
+
+  const pageLinks = [
     { name: "Settings", href: "/settings", icon: Settings },
     { name: "Work Schedule", href: "/work-schedule", icon: Calendar },
   ];
+
+  const handleTabClick = (tab: string) => {
+    try { localStorage.setItem("ktb_active_tab", tab); } catch {}
+    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: tab })); } catch {}
+    setActiveTab(tab);
+  };
+
+  const isOnHome = location.pathname === "/";
 
   const SidebarContent = () => (
     <>
@@ -52,8 +88,8 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
         </Button>
       </div>
       
-      <div className="flex-1 overflow-y-auto py-6 px-2 space-y-2">
-        <div className="space-y-2">
+      <div className="flex-1 overflow-y-auto py-6 px-2 space-y-1">
+        <div className="space-y-1">
           <div>
             {collapsed ? (
               <TooltipProvider delayDuration={0}>
@@ -102,184 +138,44 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
               </div>
             )}
           </div>
-          <div>
-            {collapsed ? (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to="/"
-                      onClick={() => {
-                        try { localStorage.setItem("ktb_active_tab", "overview"); } catch {}
-                        try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "overview" })); } catch {}
-                      }}
-                    >
-                      <Button variant="ghost" className="w-full px-2 justify-center">
-                        <BarChart3 className="h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Overview 📊</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <Link
-                to="/"
-                onClick={() => {
-                  try { localStorage.setItem("ktb_active_tab", "overview"); } catch {}
-                  try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "overview" })); } catch {}
-                }}
-              >
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <BarChart3 className="h-5 w-5" />
-                  <span>Overview 📊</span>
-                </Button>
-              </Link>
-            )}
-          </div>
-          <div>
-            {collapsed ? (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to="/"
-                      onClick={() => {
-                        try { localStorage.setItem("ktb_active_tab", "tickets"); } catch {}
-                        try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "tickets" })); } catch {}
-                      }}
-                    >
-                      <Button variant="ghost" className="w-full px-2 justify-center">
-                        <ListChecks className="h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Tickets 🎫</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <Link
-                to="/"
-                onClick={() => {
-                  try { localStorage.setItem("ktb_active_tab", "tickets"); } catch {}
-                  try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "tickets" })); } catch {}
-                }}
-              >
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <ListChecks className="h-5 w-5" />
-                  <span>Tickets 🎫</span>
-                </Button>
-              </Link>
-            )}
-          </div>
-          <div>
-            {collapsed ? (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to="/"
-                      onClick={() => {
-                        try { localStorage.setItem("ktb_active_tab", "analytics"); } catch {}
-                        try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "analytics" })); } catch {}
-                      }}
-                    >
-                      <Button variant="ghost" className="w-full px-2 justify-center">
-                        <BarChart3 className="h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Analytics 📈</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <Link
-                to="/"
-                onClick={() => {
-                  try { localStorage.setItem("ktb_active_tab", "analytics"); } catch {}
-                  try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "analytics" })); } catch {}
-                }}
-              >
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <BarChart3 className="h-5 w-5" />
-                  <span>Analytics 📈</span>
-                </Button>
-              </Link>
-            )}
-          </div>
-          <div>
-            {collapsed ? (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to="/"
-                      onClick={() => {
-                        try { localStorage.setItem("ktb_active_tab", "notes"); } catch {}
-                        try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "notes" })); } catch {}
-                      }}
-                    >
-                      <Button variant="ghost" className="w-full px-2 justify-center">
-                        <NotebookText className="h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Notes & Schedule 📝</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <Link
-                to="/"
-                onClick={() => {
-                  try { localStorage.setItem("ktb_active_tab", "notes"); } catch {}
-                  try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "notes" })); } catch {}
-                }}
-              >
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <NotebookText className="h-5 w-5" />
-                  <span>Notes & Schedule 📝</span>
-                </Button>
-              </Link>
-            )}
-          </div>
-          <div>
-            {collapsed ? (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to="/"
-                      onClick={() => {
-                        try { localStorage.setItem("ktb_active_tab", "log"); } catch {}
-                        try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "log" })); } catch {}
-                      }}
-                    >
-                      <Button variant="ghost" className="w-full px-2 justify-center">
-                        <ListChecks className="h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Log 📋</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <Link
-                to="/"
-                onClick={() => {
-                  try { localStorage.setItem("ktb_active_tab", "log"); } catch {}
-                  try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "log" })); } catch {}
-                }}
-              >
-                <Button variant="ghost" className="w-full justify-start gap-3">
-                  <ListChecks className="h-5 w-5" />
-                  <span>Log 📋</span>
-                </Button>
-              </Link>
-            )}
-          </div>
+          {tabLinks.map((tl) => {
+            const Icon = tl.icon;
+            const isActive = isOnHome && activeTab === tl.tab;
+            return (
+              <div key={tl.tab}>
+                {collapsed ? (
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link to="/" onClick={() => handleTabClick(tl.tab)}>
+                          <Button variant="ghost" className={cn(
+                            "w-full px-2 justify-center",
+                            isActive && "bg-primary/10 text-primary border border-primary/20"
+                          )}>
+                            <Icon className="h-5 w-5" />
+                          </Button>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">{tl.name}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <Link to="/" onClick={() => handleTabClick(tl.tab)}>
+                    <Button variant="ghost" className={cn(
+                      "w-full justify-start gap-3 transition-all",
+                      isActive && "bg-primary/10 text-primary border border-primary/20 font-medium"
+                    )}>
+                      <Icon className="h-5 w-5" />
+                      <span>{tl.name}</span>
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {links.map((link) => {
+        {pageLinks.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.href;
           
@@ -287,12 +183,12 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
             <Button
                 variant={isActive ? "secondary" : "ghost"}
                 className={cn(
-                  "w-full justify-start mb-1",
-                  isActive && "bg-secondary font-medium",
+                  "w-full justify-start mb-1 transition-all",
+                  isActive && "bg-primary/10 text-primary border border-primary/20 font-medium",
                   collapsed ? "px-2 justify-center" : "gap-3"
                 )}
             >
-                <Icon className={cn("h-5 w-5", collapsed ? "" : "")} />
+                <Icon className="h-5 w-5" />
                 {!collapsed && <span>{link.name}</span>}
             </Button>
           );
@@ -317,7 +213,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
           );
         })}
 
-        
+
       </div>
 
       <div className="p-4 border-t">
