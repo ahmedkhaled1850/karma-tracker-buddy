@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
-import { Menu, LayoutDashboard, Settings, LogOut, Plus, Minus } from "lucide-react";
+import { Menu, Settings, LogOut, Plus, Minus, ListChecks, BarChart3, NotebookText, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStaticShift } from "@/lib/staticSchedule";
 import { DailyShift } from "@/lib/types";
@@ -474,68 +474,37 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         Big Brother
                         </h1>
                     </div>
-                    <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-                        <div className="space-y-2">
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start gap-3"
-                                onClick={() => {
-                                    localStorage.setItem("ktb_active_tab", "overview");
-                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "overview" })); } catch {}
+                    <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+                        <div className="space-y-1">
+                            {[
+                              { tab: "overview", name: "Overview 📊", icon: BarChart3 },
+                              { tab: "tickets", name: "Tickets 🎫", icon: ListChecks },
+                              { tab: "analytics", name: "Analytics 📈", icon: BarChart3 },
+                              { tab: "notes", name: "Notes & Schedule 📝", icon: NotebookText },
+                              { tab: "log", name: "Log 📋", icon: ClipboardList },
+                            ].map((tl) => {
+                              const Icon = tl.icon;
+                              const mobileActiveTab = (() => { try { return localStorage.getItem("ktb_active_tab") || "overview"; } catch { return "overview"; } })();
+                              const isActive = location.pathname === "/" && mobileActiveTab === tl.tab;
+                              return (
+                                <Button
+                                  key={tl.tab}
+                                  variant="ghost"
+                                  className={cn(
+                                    "w-full justify-start gap-3 transition-all",
+                                    isActive && "bg-primary/10 text-primary border border-primary/20 font-medium"
+                                  )}
+                                  onClick={() => {
+                                    localStorage.setItem("ktb_active_tab", tl.tab);
+                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: tl.tab })); } catch {}
                                     navigate("/");
-                                }}
-                            >
-                                <LayoutDashboard className="h-5 w-5" />
-                                <span>Overview 📊</span>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start gap-3"
-                                onClick={() => {
-                                    localStorage.setItem("ktb_active_tab", "tickets");
-                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "tickets" })); } catch {}
-                                    navigate("/");
-                                }}
-                            >
-                                <LayoutDashboard className="h-5 w-5" />
-                                <span>Tickets 🎫</span>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start gap-3"
-                                onClick={() => {
-                                    localStorage.setItem("ktb_active_tab", "analytics");
-                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "analytics" })); } catch {}
-                                    navigate("/");
-                                }}
-                            >
-                                <LayoutDashboard className="h-5 w-5" />
-                                <span>Analytics 📈</span>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start gap-3"
-                                onClick={() => {
-                                    localStorage.setItem("ktb_active_tab", "notes");
-                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "notes" })); } catch {}
-                                    navigate("/");
-                                }}
-                            >
-                                <LayoutDashboard className="h-5 w-5" />
-                                <span>Notes & Schedule 📝</span>
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start gap-3"
-                                onClick={() => {
-                                    localStorage.setItem("ktb_active_tab", "log");
-                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "log" })); } catch {}
-                                    navigate("/");
-                                }}
-                            >
-                                <LayoutDashboard className="h-5 w-5" />
-                                <span>Log 📋</span>
-                            </Button>
+                                  }}
+                                >
+                                  <Icon className="h-5 w-5" />
+                                  <span>{tl.name}</span>
+                                </Button>
+                              );
+                            })}
                         </div>
                         {links.map((link) => {
                         const Icon = link.icon;
@@ -623,7 +592,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <div id="ktb-floating-circle" className="fixed bottom-6 right-6 z-50">
         <div
-          className="relative h-24 w-24 rounded-full border-3 border-primary/50 bg-card shadow-xl flex items-center justify-center select-none cursor-pointer hover:scale-105 transition-transform"
+          className="relative h-[5.5rem] w-[5.5rem] rounded-full bg-gradient-to-br from-card to-muted shadow-elegant flex items-center justify-center select-none cursor-pointer hover:scale-110 transition-all duration-300 group"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -638,10 +607,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
               : (nextBreak ? `Next: ${labelFor(nextBreak.key)} at ${nextBreak.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "")
           }
         >
-          <div className="absolute inset-1 rounded-full border-2 border-primary/20" />
-          <div className="absolute inset-0 rounded-full border-2 border-primary/40 animate-[spin_3s_linear_infinite]" style={{ borderTopColor: "transparent", borderRightColor: "transparent" }} />
-          <div className="text-xs font-mono text-foreground text-center leading-tight px-2">
-            {nextText || "Loading..."}
+          {/* Outer glow ring */}
+          <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary/30 to-primary-glow/30 blur-sm group-hover:from-primary/50 group-hover:to-primary-glow/50 transition-all duration-300" />
+          {/* Background circle */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-card to-muted border border-primary/30" />
+          {/* Spinning ring */}
+          <div className="absolute inset-0 rounded-full border-2 border-primary/40 animate-[spin_4s_linear_infinite]" style={{ borderTopColor: "transparent", borderRightColor: "transparent" }} />
+          {/* Inner content */}
+          <div className="relative text-[0.65rem] font-semibold text-foreground text-center leading-tight px-2">
+            {nextText || "⏱️"}
           </div>
         </div>
       </div>
