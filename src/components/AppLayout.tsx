@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
-import { Menu, Settings, LogOut, Plus, Minus, ListChecks, BarChart3, NotebookText, ClipboardList } from "lucide-react";
+import { Menu, Settings, LogOut, Plus, Minus, ListChecks, BarChart3, NotebookText, ClipboardList, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStaticShift } from "@/lib/staticSchedule";
 import { DailyShift } from "@/lib/types";
@@ -62,6 +62,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const links = [
     { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Work Schedule", href: "/work-schedule", icon: Calendar },
   ];
 
   type BreakKey = "break1" | "break2" | "break3";
@@ -310,9 +311,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const nowMs = Date.now();
 
     const active = activeBreakInfo ?? readActiveBreakFromStorage();
+    // Use ref to avoid triggering re-renders from within the interval
     if (active && (!activeBreakInfo || activeBreakInfo.start !== active.start || activeBreakInfo.key !== active.key)) {
-      // Update state so UI stays in sync; safe even if called from the interval
-      setActiveBreakInfo(active);
+      // Schedule state update outside of render to avoid re-render loops
+      queueMicrotask(() => setActiveBreakInfo(active));
     }
 
     // If a break is active, show break countdown
@@ -380,6 +382,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
     return `Shift ends in ${formatHMS(Math.max(0, Math.floor((endMs - nowMs) / 1000)))}`;
   };
+  // Use refs to avoid re-creating the interval on every state change
+  const breakScheduleRef = useRef(breakSchedule);
+  breakScheduleRef.current = breakSchedule;
+  const activeBreakInfoRef = useRef(activeBreakInfo);
+  activeBreakInfoRef.current = activeBreakInfo;
+  const shiftStartStrRef = useRef(shiftStartStr);
+  shiftStartStrRef.current = shiftStartStr;
+  const shiftEndStrRef = useRef(shiftEndStr);
+  shiftEndStrRef.current = shiftEndStr;
+  const breakDurationsRef = useRef(breakDurations);
+  breakDurationsRef.current = breakDurations;
+
   useEffect(() => {
     if (originalTitleRef.current === null) originalTitleRef.current = document.title;
     const id = window.setInterval(() => {
@@ -405,7 +419,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       if (originalTitleRef.current) document.title = originalTitleRef.current;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [breakSchedule, activeBreakInfo, shiftStartStr, shiftEndStr, breakDurations]);
+  }, []);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -592,7 +606,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <div id="ktb-floating-circle" className="fixed bottom-6 right-6 z-50">
         <div
-          className="relative h-[5.5rem] w-[5.5rem] rounded-full bg-gradient-to-br from-card to-muted shadow-elegant flex items-center justify-center select-none cursor-pointer hover:scale-110 transition-all duration-300 group"
+          className="relative h-28 w-28 rounded-full bg-gradient-to-br from-card to-muted shadow-xl flex items-center justify-center select-none cursor-pointer hover:scale-110 transition-all duration-300 group"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -607,14 +621,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
               : (nextBreak ? `Next: ${labelFor(nextBreak.key)} at ${nextBreak.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "")
           }
         >
-          {/* Outer glow ring */}
-          <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary/30 to-primary-glow/30 blur-sm group-hover:from-primary/50 group-hover:to-primary-glow/50 transition-all duration-300" />
+          {/* Outer glow pulse */}
+          <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-primary/20 to-primary-glow/20 blur-md animate-pulse-glow group-hover:from-primary/40 group-hover:to-primary-glow/40 transition-all duration-500" />
           {/* Background circle */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-card to-muted border border-primary/30" />
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-card via-card to-muted border-2 border-primary/25 group-hover:border-primary/50 transition-colors" />
           {/* Spinning ring */}
-          <div className="absolute inset-0 rounded-full border-2 border-primary/40 animate-[spin_4s_linear_infinite]" style={{ borderTopColor: "transparent", borderRightColor: "transparent" }} />
+          <div className="absolute inset-1 rounded-full border-2 border-primary/30 animate-[spin_6s_linear_infinite]" style={{ borderTopColor: "transparent", borderRightColor: "transparent" }} />
+          {/* Second spinning ring (opposite) */}
+          <div className="absolute inset-2 rounded-full border border-primary/15 animate-[spin_8s_linear_infinite_reverse]" style={{ borderBottomColor: "transparent", borderLeftColor: "transparent" }} />
           {/* Inner content */}
-          <div className="relative text-[0.65rem] font-semibold text-foreground text-center leading-tight px-2">
+          <div className="relative text-[0.7rem] font-bold text-foreground text-center leading-tight px-3">
             {nextText || "⏱️"}
           </div>
         </div>
