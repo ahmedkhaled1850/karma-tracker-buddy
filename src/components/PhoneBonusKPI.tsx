@@ -10,6 +10,7 @@ interface PhoneBonusKPIProps {
   selectedMonth: number;
   selectedYear: number;
   csatPercentage: number;
+  totalSurveys?: number;
 }
 
 const getProductivityScore = (avg: number) => {
@@ -52,7 +53,7 @@ const getBadgeVariant = (score: number): "default" | "secondary" | "destructive"
   return "destructive";
 };
 
-export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercentage }: PhoneBonusKPIProps) => {
+export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercentage, totalSurveys = 0 }: PhoneBonusKPIProps) => {
   const [totalCalls, setTotalCalls] = useState(0);
   const [workDays, setWorkDays] = useState(0);
   const [absenceDays, setAbsenceDays] = useState(0);
@@ -107,7 +108,8 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
 
   const avgDailyCalls = useMemo(() => workDays > 0 ? totalCalls / workDays : 0, [totalCalls, workDays]);
   const productivityScore = useMemo(() => getProductivityScore(avgDailyCalls), [avgDailyCalls]);
-  const csatScore = useMemo(() => getCsatScore(csatPercentage), [csatPercentage]);
+  const effectiveCsat = useMemo(() => totalSurveys === 0 ? 100 : csatPercentage, [totalSurveys, csatPercentage]);
+  const csatScore = useMemo(() => getCsatScore(effectiveCsat), [effectiveCsat]);
   const absenceGate = useMemo(() => getAbsenceGate(absenceDays), [absenceDays]);
   
   const finalBonus = useMemo(() => {
@@ -175,7 +177,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {csatPercentage.toFixed(1)}%
+                {effectiveCsat.toFixed(1)}%{totalSurveys === 0 ? ' (no surveys yet)' : ''}
               </span>
               <span className={`font-bold ${getScoreColor(csatScore)}`}>
                 {csatScore}%

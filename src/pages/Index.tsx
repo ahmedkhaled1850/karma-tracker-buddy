@@ -1496,6 +1496,7 @@ const Index = () => {
                 selectedMonth={selectedMonth}
                 selectedYear={selectedYear}
                 csatPercentage={csat}
+                totalSurveys={totalSurveys}
               />
               <div className="animate-fade-in">
                 <MonthComparison
