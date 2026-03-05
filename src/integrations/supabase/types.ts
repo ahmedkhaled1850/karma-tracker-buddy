@@ -101,6 +101,7 @@ export type Database = {
       }
       daily_shifts: {
         Row: {
+          absence_type: string | null
           break1_duration: number | null
           break1_time: string | null
           break2_duration: number | null
@@ -118,6 +119,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          absence_type?: string | null
           break1_duration?: number | null
           break1_time?: string | null
           break2_duration?: number | null
@@ -135,6 +137,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          absence_type?: string | null
           break1_duration?: number | null
           break1_time?: string | null
           break2_duration?: number | null

@@ -26,6 +26,7 @@ export interface DailyShift {
   break3_duration: number;
   notes: string | null;
   is_off_day: boolean;
+  absence_type?: string | null;
 }
 
 export interface PerformanceData {

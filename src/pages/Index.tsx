@@ -21,6 +21,7 @@ import { BreakScheduler } from "@/components/BreakScheduler";
 import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
 import SurveyConversion from "@/components/SurveyConversion";
+import { PhoneBonusKPI } from "@/components/PhoneBonusKPI";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ThreeMonthPerformance, MonthMetrics } from "@/components/ThreeMonthPerformance";
@@ -1488,8 +1489,14 @@ const Index = () => {
             {/* Analytics Section */}
             <div className="space-y-6">
               <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">📈 Analytics & Progress</h2>
-              
-              {/* Month Comparison */}
+
+              {/* Phone Bonus KPI */}
+              <PhoneBonusKPI
+                userId={user.id}
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                csatPercentage={csat}
+              />
               <div className="animate-fade-in">
                 <MonthComparison
                   currentMonth={{

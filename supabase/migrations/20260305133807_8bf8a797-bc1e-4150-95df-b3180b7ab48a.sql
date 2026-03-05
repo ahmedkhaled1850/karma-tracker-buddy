@@ -1,0 +1,1 @@
+ALTER TABLE public.daily_shifts ADD COLUMN absence_type text DEFAULT null;
