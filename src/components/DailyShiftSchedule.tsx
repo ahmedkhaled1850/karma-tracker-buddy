@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar, Save, Loader2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { getStaticShift, formatTime12H } from "@/lib/staticSchedule";
 import { DailyShift } from "@/lib/types";
 
@@ -146,6 +148,7 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftSc
         break3_duration: editingShift.break3_duration || 15,
         notes: editingShift.notes,
         is_off_day: editingShift.is_off_day,
+        absence_type: editingShift.is_off_day ? (editingShift.absence_type || 'scheduled_off') : null,
       };
 
       if (editingShift.id) {
@@ -312,7 +315,13 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftSc
                 <TableCell className={`font-medium ${isCompleted ? 'line-through' : ''}`}>{formatDate(shift.shift_date)}</TableCell>
                 <TableCell className={`text-muted-foreground ${isCompleted ? 'line-through' : ''}`}>{getDayName(shift.shift_date)}</TableCell>
                 <TableCell className={isCompleted ? 'line-through' : ''}>
-                  {shift.is_off_day ? <span className="text-destructive font-medium">OFF</span> : formatTime12H(shift.shift_start)}
+                  {shift.is_off_day ? (
+                    <span className="flex items-center gap-1">
+                      <span className="text-destructive font-medium">OFF</span>
+                      {shift.absence_type === 'sick_leave' && <Badge variant="secondary" className="text-[10px] px-1">Sick</Badge>}
+                      {shift.absence_type === 'unexcused' && <Badge variant="destructive" className="text-[10px] px-1">Unexcused</Badge>}
+                    </span>
+                  ) : formatTime12H(shift.shift_start)}
                 </TableCell>
                 <TableCell className={isCompleted ? 'line-through' : ''}>
                   {shift.is_off_day ? <span className="text-destructive font-medium">OFF</span> : formatTime12H(shift.shift_end)}
@@ -365,6 +374,27 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear }: DailyShiftSc
                   Day Off
                 </Label>
               </div>
+
+              {editingShift.is_off_day && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Absence Type</Label>
+                  <Select
+                    value={editingShift.absence_type || 'scheduled_off'}
+                    onValueChange={(value) => 
+                      setEditingShift(prev => prev ? { ...prev, absence_type: value } : null)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="scheduled_off">Scheduled Off (لا يُحسب غياب)</SelectItem>
+                      <SelectItem value="sick_leave">Sick Leave (إجازة مرضية)</SelectItem>
+                      <SelectItem value="unexcused">Unexcused Absence (غياب بدون عذر)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {!editingShift.is_off_day && (
                 <>
