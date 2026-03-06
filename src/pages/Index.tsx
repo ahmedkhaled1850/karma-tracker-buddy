@@ -1387,8 +1387,8 @@ const Index = () => {
               />
             </div>
 
-            {/* Daily Target */}
-            <div className="animate-fade-in">
+            {/* Daily Target + KPI */}
+            <div className="animate-fade-in space-y-4">
               <DailyTarget
                 currentGood={totalGood}
                 totalNegatives={totalBad}
@@ -1398,6 +1398,14 @@ const Index = () => {
                 todayGood={todayStats.good}
                 todayBad={todayStats.bad}
                 remainingWorkingDays={remainingWorkingDays}
+              />
+              {/* Compact Phone Bonus KPI */}
+              <PhoneBonusKPI
+                userId={user.id}
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                csatPercentage={csat}
+                totalSurveys={totalSurveys}
               />
             </div>
 
