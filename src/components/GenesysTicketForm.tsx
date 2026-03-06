@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Phone, MessageSquare, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 interface GenesysTicket {
@@ -22,9 +23,18 @@ interface GenesysTicket {
 interface GenesysTicketFormProps {
   tickets: GenesysTicket[];
   onTicketsChange: (tickets: GenesysTicket[]) => void;
+  totalGood?: number;
+  goodByChannel?: { phone: number; chat: number; email: number };
+  onGoodByChannelChange?: (channel: { phone: number; chat: number; email: number }) => void;
 }
 
-export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFormProps) => {
+export const GenesysTicketForm = ({ 
+  tickets, 
+  onTicketsChange, 
+  totalGood = 0,
+  goodByChannel = { phone: 0, chat: 0, email: 0 },
+  onGoodByChannelChange,
+}: GenesysTicketFormProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newTicket, setNewTicket] = useState<GenesysTicket>({
     ticketLink: "",
@@ -70,6 +80,35 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
   const removeTicket = (id: string) => {
     onTicketsChange(tickets.filter(t => t.id !== id));
     toast.success("Ticket removed");
+  };
+
+  // Channel distribution for good tickets
+  const channelDistribution = useMemo(() => {
+    const trackedByChannel = { phone: 0, chat: 0, email: 0 };
+    tickets.forEach(t => {
+      if (t.ratingScore >= 7 && t.ratingScore <= 9) {
+        const ch = (t.channel || "Phone").toLowerCase() as "phone" | "chat" | "email";
+        trackedByChannel[ch]++;
+      }
+    });
+    return {
+      phone: goodByChannel.phone,
+      chat: goodByChannel.chat,
+      email: goodByChannel.email,
+      total: goodByChannel.phone + goodByChannel.chat + goodByChannel.email,
+    };
+  }, [tickets, goodByChannel]);
+
+  const handleChannelUpdate = (channel: "phone" | "chat" | "email", delta: number) => {
+    if (!onGoodByChannelChange) return;
+    const updated = { ...goodByChannel, [channel]: Math.max(0, goodByChannel[channel] + delta) };
+    onGoodByChannelChange(updated);
+  };
+
+  const channelIcons = {
+    phone: Phone,
+    chat: MessageSquare,
+    email: Mail,
   };
 
   return (
@@ -136,145 +175,215 @@ export const GenesysTicketForm = ({ tickets, onTicketsChange }: GenesysTicketFor
         </DialogContent>
       </Dialog>
 
-      {/* Display Tickets Grouped by Date */}
-      {tickets.length > 0 && (
+      {/* Good Ticket Summary - shows ALL good tickets */}
+      {totalGood > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>good ticket summary</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Good Ticket Summary</span>
+              <Badge variant="secondary" className="text-sm">
+                {totalGood} total good
+              </Badge>
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            {Object.entries(
-              tickets.reduce((acc, ticket) => {
-                const date = ticket.ticketDate;
-                if (!acc[date]) {
-                  acc[date] = { good: 0, bad: 0, tickets: [] };
-                }
-                const isGood = ticket.ratingScore >= 7 && ticket.ratingScore <= 9;
-                if (isGood) acc[date].good++;
-                else acc[date].bad++;
-                acc[date].tickets.push(ticket);
-                return acc;
-              }, {} as Record<string, { good: number; bad: number; tickets: typeof tickets }>)
-            )
-              .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
-              .map(([date, data]) => (
-                <Accordion key={date} type="single" collapsible className="mb-2">
-                  <AccordionItem value={date}>
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center justify-between w-full pr-4">
-                        <span className="font-medium">
-                          {new Date(date).toLocaleDateString('en-US', { 
-                            month: 'long', 
-                            day: 'numeric', 
-                            year: 'numeric' 
-                          })}
+          <CardContent className="space-y-4">
+            {/* Channel Distribution Controls */}
+            <div className="p-4 bg-muted/50 rounded-xl border border-border">
+              <h4 className="text-sm font-semibold text-foreground mb-3">
+                📊 Good Ratings by Channel
+              </h4>
+              <p className="text-xs text-muted-foreground mb-4">
+                Distribute your {totalGood} good ratings across channels to track per-channel performance
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {(["phone", "chat", "email"] as const).map((ch) => {
+                  const Icon = channelIcons[ch];
+                  
+                  return (
+                    <div key={ch} className="text-center p-3 bg-background rounded-lg border shadow-sm space-y-2">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Icon className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-medium capitalize">{ch}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleChannelUpdate(ch, -1)}
+                          disabled={goodByChannel[ch] <= 0}
+                        >
+                          -
+                        </Button>
+                        <span className="text-lg font-bold text-foreground min-w-[2rem]">
+                          {goodByChannel[ch]}
                         </span>
-                        <div className="flex gap-4 text-sm">
-                          <span className="text-green-600 font-medium">
-                            Good: {data.good}
-                          </span>
-                          <span className="text-red-600 font-medium">
-                            Bad: {data.bad}
-                          </span>
-                          <span className="text-muted-foreground">
-                            Total: {data.tickets.length}
-                          </span>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleChannelUpdate(ch, 1)}
+                          disabled={channelDistribution.total >= totalGood}
+                        >
+                          +
+                        </Button>
                       </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-3 pt-2">
-                        {data.tickets.map((ticket) => {
-                          const isGood = ticket.ratingScore >= 7 && ticket.ratingScore <= 9;
-                          return (
-                            <div key={ticket.id} className="p-4 border rounded-lg bg-muted/30 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-sm font-medium px-2 py-1 rounded ${
-                                    isGood ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                  }`}>
-                                    Score: {ticket.ratingScore} ({isGood ? "CSAT" : "DSAT"})
-                                  </span>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeTicket(ticket.id!)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Genesys Link</label>
-                                  <Input
-                                    value={ticket.ticketLink}
-                                    onChange={(e) => updateTicketInline(ticket.id!, "ticketLink", e.target.value)}
-                                    placeholder="https://..."
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Rating Score</label>
-                                  <Input
-                                    type="number"
-                                    min={1}
-                                    max={10}
-                                    value={ticket.ratingScore}
-                                    onChange={(e) => updateTicketInline(ticket.id!, "ratingScore", parseInt(e.target.value) || 1)}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Customer Phone</label>
-                                  <Input
-                                    value={ticket.customerPhone}
-                                    onChange={(e) => updateTicketInline(ticket.id!, "customerPhone", e.target.value)}
-                                    placeholder="+1234567890"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Ticket ID</label>
-                                  <Input
-                                    value={ticket.ticketId || ""}
-                                    onChange={(e) => updateTicketInline(ticket.id!, "ticketId", e.target.value)}
-                                    placeholder="Enter ticket ID..."
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Channel</label>
-                                  <Select
-                                    value={(ticket.channel || "Phone")}
-                                    onValueChange={(value) => updateTicketInline(ticket.id!, "channel", value)}
-                                  >
-                                    <SelectTrigger className="bg-background h-9">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="Phone">Phone 📞</SelectItem>
-                                      <SelectItem value="Chat">Chat 💬</SelectItem>
-                                      <SelectItem value="Email">Email 📧</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Note</label>
-                                  <Input
-                                    value={ticket.note || ""}
-                                    onChange={(e) => updateTicketInline(ticket.id!, "note", e.target.value)}
-                                    placeholder="Optional note..."
-                                  />
-                                </div>
-                              </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {channelDistribution.total !== totalGood && (
+                <p className="text-xs text-warning mt-2 text-center">
+                  ⚠️ {totalGood - channelDistribution.total} good ratings not assigned to a channel yet
+                </p>
+              )}
+              {channelDistribution.total === totalGood && (
+                <p className="text-xs text-success mt-2 text-center">
+                  ✅ All good ratings distributed across channels
+                </p>
+              )}
+            </div>
+
+            {/* Genesys Tickets Detail (existing tracked tickets) */}
+            {tickets.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-2">
+                  📋 Genesys Ticket Details ({tickets.length} tickets)
+                </h4>
+                {Object.entries(
+                  tickets.reduce((acc, ticket) => {
+                    const date = ticket.ticketDate;
+                    if (!acc[date]) {
+                      acc[date] = { good: 0, bad: 0, tickets: [] };
+                    }
+                    const isGood = ticket.ratingScore >= 7 && ticket.ratingScore <= 9;
+                    if (isGood) acc[date].good++;
+                    else acc[date].bad++;
+                    acc[date].tickets.push(ticket);
+                    return acc;
+                  }, {} as Record<string, { good: number; bad: number; tickets: typeof tickets }>)
+                )
+                  .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
+                  .map(([date, data]) => (
+                    <Accordion key={date} type="single" collapsible className="mb-2">
+                      <AccordionItem value={date}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex items-center justify-between w-full pr-4">
+                            <span className="font-medium">
+                              {new Date(date).toLocaleDateString('en-US', { 
+                                month: 'long', 
+                                day: 'numeric', 
+                                year: 'numeric' 
+                              })}
+                            </span>
+                            <div className="flex gap-4 text-sm">
+                              <span className="text-success font-medium">
+                                Good: {data.good}
+                              </span>
+                              <span className="text-destructive font-medium">
+                                Bad: {data.bad}
+                              </span>
+                              <span className="text-muted-foreground">
+                                Total: {data.tickets.length}
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              ))
-            }
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-3 pt-2">
+                            {data.tickets.map((ticket) => {
+                              const isGood = ticket.ratingScore >= 7 && ticket.ratingScore <= 9;
+                              return (
+                                <div key={ticket.id} className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-sm font-medium px-2 py-1 rounded ${
+                                        isGood ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
+                                      }`}>
+                                        Score: {ticket.ratingScore} ({isGood ? "CSAT" : "DSAT"})
+                                      </span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeTicket(ticket.id!)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Genesys Link</label>
+                                      <Input
+                                        value={ticket.ticketLink}
+                                        onChange={(e) => updateTicketInline(ticket.id!, "ticketLink", e.target.value)}
+                                        placeholder="https://..."
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Rating Score</label>
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        max={10}
+                                        value={ticket.ratingScore}
+                                        onChange={(e) => updateTicketInline(ticket.id!, "ratingScore", parseInt(e.target.value) || 1)}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Customer Phone</label>
+                                      <Input
+                                        value={ticket.customerPhone}
+                                        onChange={(e) => updateTicketInline(ticket.id!, "customerPhone", e.target.value)}
+                                        placeholder="+1234567890"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Ticket ID</label>
+                                      <Input
+                                        value={ticket.ticketId || ""}
+                                        onChange={(e) => updateTicketInline(ticket.id!, "ticketId", e.target.value)}
+                                        placeholder="Enter ticket ID..."
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Channel</label>
+                                      <Select
+                                        value={(ticket.channel || "Phone")}
+                                        onValueChange={(value) => updateTicketInline(ticket.id!, "channel", value)}
+                                      >
+                                        <SelectTrigger className="bg-background h-9">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Phone">Phone 📞</SelectItem>
+                                          <SelectItem value="Chat">Chat 💬</SelectItem>
+                                          <SelectItem value="Email">Email 📧</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Note</label>
+                                      <Input
+                                        value={ticket.note || ""}
+                                        onChange={(e) => updateTicketInline(ticket.id!, "note", e.target.value)}
+                                        placeholder="Optional note..."
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  ))
+                }
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
