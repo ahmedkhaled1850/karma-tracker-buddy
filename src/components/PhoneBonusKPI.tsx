@@ -69,7 +69,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
         const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
         const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${lastDay}`;
 
-        // Load total calls from daily_survey_calls
+        // Load total calls from daily_survey_calls (only days with records)
         const { data: callsData } = await supabase
           .from('daily_survey_calls')
           .select('total_calls')
@@ -77,10 +77,12 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
           .gte('call_date', startDate)
           .lte('call_date', endDate);
 
-        const calls = (callsData || []).reduce((sum, r) => sum + (r.total_calls || 0), 0);
+        const validCallDays = (callsData || []).filter(r => (r.total_calls || 0) > 0);
+        const calls = validCallDays.reduce((sum, r) => sum + (r.total_calls || 0), 0);
         setTotalCalls(calls);
+        setRecordedDays(validCallDays.length);
 
-        // Load shifts to count work days and absence days
+        // Load shifts to count absence days
         const { data: shiftsData } = await supabase
           .from('daily_shifts')
           .select('is_off_day, absence_type')
@@ -89,12 +91,10 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
           .lte('shift_date', endDate);
 
         const shifts = shiftsData || [];
-        const work = shifts.filter(s => !s.is_off_day).length;
         const absence = shifts.filter(s => 
           s.is_off_day && (s.absence_type === 'sick_leave' || s.absence_type === 'unexcused')
         ).length;
 
-        setWorkDays(work);
         setAbsenceDays(absence);
       } catch (error) {
         console.error('Error loading KPI data:', error);
