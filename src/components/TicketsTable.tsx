@@ -21,7 +21,7 @@ interface TicketsTableProps {
 }
 
 export const TicketsTable = ({ tickets, onTicketsChange }: TicketsTableProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(tickets.length > 0);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "DSAT" | "Karma">("ALL");
   const [showAll, setShowAll] = useState(false); // show all tickets toggle

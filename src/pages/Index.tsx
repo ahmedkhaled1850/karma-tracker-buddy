@@ -303,6 +303,58 @@ const Index = () => {
             note: t.note || "",
           })),
         };
+
+        // Auto-generate missing DSAT/Karma ticket records
+        const existingBadTickets = loadedData.tickets.length;
+        const totalBadExpected = (perfData.bad || 0) + (perfData.karma_bad || 0);
+        if (totalBadExpected > existingBadTickets && perfData.id) {
+          const newTickets: Array<{ performance_id: string; user_id: string; ticket_id: string; type: string; channel: string; note: string }> = [];
+          // Distribute: first fill DSAT, then Karma
+          const existingDsat = loadedData.tickets.filter(t => t.type === 'DSAT').length;
+          const existingKarma = loadedData.tickets.filter(t => t.type === 'Karma').length;
+          const missingDsat = Math.max(0, (perfData.bad || 0) - existingDsat);
+          const missingKarma = Math.max(0, (perfData.karma_bad || 0) - existingKarma);
+          
+          for (let i = 0; i < missingDsat; i++) {
+            newTickets.push({
+              performance_id: perfData.id,
+              user_id: user.id,
+              ticket_id: `DSAT-${existingDsat + i + 1}`,
+              type: 'DSAT',
+              channel: 'Phone',
+              note: '',
+            });
+          }
+          for (let i = 0; i < missingKarma; i++) {
+            newTickets.push({
+              performance_id: perfData.id,
+              user_id: user.id,
+              ticket_id: `KARMA-${existingKarma + i + 1}`,
+              type: 'Karma',
+              channel: 'Phone',
+              note: '',
+            });
+          }
+          
+          if (newTickets.length > 0) {
+            const { data: insertedTickets } = await supabase
+              .from('tickets')
+              .insert(newTickets)
+              .select();
+            
+            if (insertedTickets) {
+              const mapped = insertedTickets.map((t: any) => ({
+                id: t.id,
+                ticketId: t.ticket_id,
+                type: t.type as "DSAT" | "Karma",
+                channel: t.channel as "Phone" | "Chat" | "Email",
+                note: t.note || "",
+              }));
+              loadedData.tickets = [...loadedData.tickets, ...mapped];
+            }
+          }
+        }
+
         setData(loadedData);
         setPreviousData(loadedData);
         
@@ -331,6 +383,46 @@ const Index = () => {
             note: (t as any).note || "",
           }));
           
+          // Auto-generate missing good ticket records for regular good ratings
+          const existingGoodGenesys = loaded.filter(t => t.ratingScore >= 7 && t.ratingScore <= 9).length;
+          const totalGoodExpected = (perfData.good || 0) + (perfData.genesys_good || 0);
+          
+          if (totalGoodExpected > existingGoodGenesys && perfData.id) {
+            const missingGood = totalGoodExpected - existingGoodGenesys;
+            const newGenesysTickets = [];
+            const today = new Date().toISOString().split('T')[0];
+            
+            for (let i = 0; i < missingGood; i++) {
+              newGenesysTickets.push({
+                performance_id: perfData.id,
+                user_id: user.id,
+                ticket_link: '',
+                rating_score: 8,
+                customer_phone: '',
+                ticket_date: today,
+              });
+            }
+            
+            const { data: insertedGenesys } = await supabase
+              .from('genesys_tickets')
+              .insert(newGenesysTickets)
+              .select();
+            
+            if (insertedGenesys) {
+              const mapped = insertedGenesys.map((t: any) => ({
+                id: t.id,
+                ticketLink: t.ticket_link,
+                ratingScore: t.rating_score,
+                customerPhone: t.customer_phone || "",
+                ticketDate: t.ticket_date,
+                ticketId: "",
+                channel: "Phone" as "Phone" | "Chat" | "Email",
+                note: "",
+              }));
+              loaded.push(...mapped);
+            }
+          }
+
           // Set loaded tickets
           setGenesysTickets(loaded);
 
