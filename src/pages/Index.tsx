@@ -384,15 +384,16 @@ const Index = () => {
           }));
           
           // Auto-generate missing good ticket records for regular good ratings
+          // Merge 'good' counter into genesys tickets to avoid double-counting
           const existingGoodGenesys = loaded.filter(t => t.ratingScore >= 7 && t.ratingScore <= 9).length;
-          const totalGoodExpected = (perfData.good || 0) + (perfData.genesys_good || 0);
+          const regularGood = perfData.good || 0;
           
-          if (totalGoodExpected > existingGoodGenesys && perfData.id) {
-            const missingGood = totalGoodExpected - existingGoodGenesys;
+          if (regularGood > 0 && perfData.id) {
+            // Move regular good into genesys tickets
             const newGenesysTickets = [];
             const today = new Date().toISOString().split('T')[0];
             
-            for (let i = 0; i < missingGood; i++) {
+            for (let i = 0; i < regularGood; i++) {
               newGenesysTickets.push({
                 performance_id: perfData.id,
                 user_id: user.id,
@@ -420,6 +421,17 @@ const Index = () => {
                 note: "",
               }));
               loaded.push(...mapped);
+              
+              // Reset 'good' to 0 and move to genesys_good to prevent double-counting
+              await supabase
+                .from('performance_data')
+                .update({ good: 0, genesys_good: existingGoodGenesys + regularGood })
+                .eq('id', perfData.id);
+              
+              // Update local state
+              loadedData.good = 0;
+              loadedData.genesysGood = existingGoodGenesys + regularGood;
+              setData(prev => ({ ...prev, good: 0, genesysGood: existingGoodGenesys + regularGood }));
             }
           }
 
