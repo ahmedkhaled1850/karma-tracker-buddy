@@ -308,7 +308,6 @@ const Index = () => {
         const existingBadTickets = loadedData.tickets.length;
         const totalBadExpected = (perfData.bad || 0) + (perfData.karma_bad || 0);
         if (totalBadExpected > existingBadTickets && perfData.id) {
-          const _missingCount = totalBadExpected - existingBadTickets;
           const newTickets: Array<{ performance_id: string; user_id: string; ticket_id: string; type: string; channel: string; note: string }> = [];
           // Distribute: first fill DSAT, then Karma
           const existingDsat = loadedData.tickets.filter(t => t.type === 'DSAT').length;
