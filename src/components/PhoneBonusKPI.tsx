@@ -147,7 +147,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {avgDailyCalls.toFixed(1)} calls/day ({totalCalls} total / {workDays} days)
+                {avgDailyCalls.toFixed(1)} calls/day ({totalCalls} total / {recordedDays} days)
               </span>
               <span className={`font-bold ${getScoreColor(productivityScore)}`}>
                 {productivityScore}%
@@ -165,6 +165,11 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             <span>28-30: 75%</span>
             <span>30+: 100%</span>
           </div>
+          {productivityScore < 100 && recordedDays > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              📈 تحتاج <span className="font-bold text-primary">{Math.ceil((30 * recordedDays) - totalCalls)}</span> مكالمة إضافية للوصول لـ 100% (30 calls/day)
+            </p>
+          )}
         </div>
 
         {/* CSAT (50%) */}
