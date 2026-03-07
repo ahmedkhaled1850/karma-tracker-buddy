@@ -106,7 +106,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
     loadData();
   }, [userId, selectedMonth, selectedYear]);
 
-  const avgDailyCalls = useMemo(() => workDays > 0 ? totalCalls / workDays : 0, [totalCalls, workDays]);
+  const avgDailyCalls = useMemo(() => recordedDays > 0 ? totalCalls / recordedDays : 0, [totalCalls, recordedDays]);
   const productivityScore = useMemo(() => getProductivityScore(avgDailyCalls), [avgDailyCalls]);
   const effectiveCsat = useMemo(() => totalSurveys === 0 ? 100 : csatPercentage, [totalSurveys, csatPercentage]);
   const csatScore = useMemo(() => getCsatScore(effectiveCsat), [effectiveCsat]);
