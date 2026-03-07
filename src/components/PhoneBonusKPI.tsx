@@ -55,7 +55,7 @@ const getBadgeVariant = (score: number): "default" | "secondary" | "destructive"
 
 export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercentage, totalSurveys = 0 }: PhoneBonusKPIProps) => {
   const [totalCalls, setTotalCalls] = useState(0);
-  const [workDays, setWorkDays] = useState(0);
+  const [recordedDays, setRecordedDays] = useState(0);
   const [absenceDays, setAbsenceDays] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -69,7 +69,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
         const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
         const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${lastDay}`;
 
-        // Load total calls from daily_survey_calls
+        // Load total calls from daily_survey_calls (only days with records)
         const { data: callsData } = await supabase
           .from('daily_survey_calls')
           .select('total_calls')
@@ -77,10 +77,12 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
           .gte('call_date', startDate)
           .lte('call_date', endDate);
 
-        const calls = (callsData || []).reduce((sum, r) => sum + (r.total_calls || 0), 0);
+        const validCallDays = (callsData || []).filter(r => (r.total_calls || 0) > 0);
+        const calls = validCallDays.reduce((sum, r) => sum + (r.total_calls || 0), 0);
         setTotalCalls(calls);
+        setRecordedDays(validCallDays.length);
 
-        // Load shifts to count work days and absence days
+        // Load shifts to count absence days
         const { data: shiftsData } = await supabase
           .from('daily_shifts')
           .select('is_off_day, absence_type')
@@ -89,12 +91,10 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
           .lte('shift_date', endDate);
 
         const shifts = shiftsData || [];
-        const work = shifts.filter(s => !s.is_off_day).length;
         const absence = shifts.filter(s => 
           s.is_off_day && (s.absence_type === 'sick_leave' || s.absence_type === 'unexcused')
         ).length;
 
-        setWorkDays(work);
         setAbsenceDays(absence);
       } catch (error) {
         console.error('Error loading KPI data:', error);
@@ -106,7 +106,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
     loadData();
   }, [userId, selectedMonth, selectedYear]);
 
-  const avgDailyCalls = useMemo(() => workDays > 0 ? totalCalls / workDays : 0, [totalCalls, workDays]);
+  const avgDailyCalls = useMemo(() => recordedDays > 0 ? totalCalls / recordedDays : 0, [totalCalls, recordedDays]);
   const productivityScore = useMemo(() => getProductivityScore(avgDailyCalls), [avgDailyCalls]);
   const effectiveCsat = useMemo(() => totalSurveys === 0 ? 100 : csatPercentage, [totalSurveys, csatPercentage]);
   const csatScore = useMemo(() => getCsatScore(effectiveCsat), [effectiveCsat]);
@@ -147,7 +147,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {avgDailyCalls.toFixed(1)} calls/day ({totalCalls} total / {workDays} days)
+                {avgDailyCalls.toFixed(1)} calls/day ({totalCalls} total / {recordedDays} days)
               </span>
               <span className={`font-bold ${getScoreColor(productivityScore)}`}>
                 {productivityScore}%
@@ -165,6 +165,11 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             <span>28-30: 75%</span>
             <span>30+: 100%</span>
           </div>
+          {productivityScore < 100 && recordedDays > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              📈 تحتاج <span className="font-bold text-primary">{Math.ceil((30 * recordedDays) - totalCalls)}</span> مكالمة إضافية للوصول لـ 100% (30 calls/day)
+            </p>
+          )}
         </div>
 
         {/* CSAT (50%) */}
