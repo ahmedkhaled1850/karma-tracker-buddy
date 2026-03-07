@@ -55,7 +55,7 @@ const getBadgeVariant = (score: number): "default" | "secondary" | "destructive"
 
 export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercentage, totalSurveys = 0 }: PhoneBonusKPIProps) => {
   const [totalCalls, setTotalCalls] = useState(0);
-  const [workDays, setWorkDays] = useState(0);
+  const [recordedDays, setRecordedDays] = useState(0);
   const [absenceDays, setAbsenceDays] = useState(0);
   const [loading, setLoading] = useState(true);
 
