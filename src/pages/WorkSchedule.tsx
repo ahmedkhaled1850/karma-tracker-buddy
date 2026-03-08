@@ -192,7 +192,7 @@ export default function WorkSchedule() {
           </div>
           <Button onClick={() => setAbsenceDialogOpen(true)} variant="destructive" size="sm" className="gap-2">
             <CalendarOff className="h-4 w-4" />
-            سجّل غياب
+            Record Absence
           </Button>
         </div>
 
