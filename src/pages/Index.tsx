@@ -1456,6 +1456,13 @@ const Index = () => {
               <p className="text-base text-muted-foreground">The big brother who will care for you at work and help you</p>
             </div>
             <div className="flex items-center gap-3">
+              {nextEvent.countdown && nextEvent.label && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">{nextEvent.label}</span>
+                  <span className="text-sm font-mono font-bold text-primary">{nextEvent.countdown}</span>
+                </div>
+              )}
               {isSaving && (
                 <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
               )}
