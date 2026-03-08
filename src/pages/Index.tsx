@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { ThumbsUp, ThumbsDown, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { DailySummaryCard } from "@/components/DailySummaryCard";
+import { QuickActionsBar } from "@/components/QuickActionsBar";
  
 import { MetricCard } from "@/components/MetricCard";
 import { PercentageDisplay } from "@/components/PercentageDisplay";
@@ -77,6 +79,7 @@ const Index = () => {
   const [performanceId, setPerformanceId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("ktb_active_tab") || "overview";
@@ -1386,7 +1389,51 @@ const Index = () => {
       localStorage.setItem("ktb_metrics_update", JSON.stringify(detail));
     } catch {}
   }, [totalGood, totalBad, data.karmaBad]);
-  
+
+  // Next event from BreakScheduler for daily summary
+  const [nextEvent, setNextEvent] = useState<{ countdown: string; label: string }>({ countdown: "", label: "" });
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ countdown: string; label: string }>;
+      if (ce.detail) setNextEvent(ce.detail);
+    };
+    window.addEventListener("ktb_next_event", handler as EventListener);
+    try {
+      const stored = localStorage.getItem("ktb_next_event");
+      if (stored) setNextEvent(JSON.parse(stored));
+    } catch {}
+    return () => window.removeEventListener("ktb_next_event", handler as EventListener);
+  }, []);
+
+  // Daily target for summary card (88% level)
+  const dailyTargetForSummary = useMemo(() => {
+    const totalKB = totalGood + totalBad + data.karmaBad;
+    const needed = Math.max(0, Math.ceil((0.88 * totalKB - totalGood) / (1 - 0.88)));
+    const days = remainingWorkingDays ?? 1;
+    return needed / Math.max(1, days);
+  }, [totalGood, totalBad, data.karmaBad, remainingWorkingDays]);
+
+  // Smart notifications for target achievement
+  const lastNotifiedRef = useRef<string>("");
+  useEffect(() => {
+    const key = `${todayStats.good}-${Math.ceil(dailyTargetForSummary)}`;
+    if (key === lastNotifiedRef.current) return;
+    
+    const target = Math.ceil(dailyTargetForSummary);
+    if (target <= 0) return;
+    
+    if (todayStats.good === target && todayStats.good > 0) {
+      toast.success("🎯 You reached your daily target! Keep going!");
+      lastNotifiedRef.current = key;
+    } else if (todayStats.good > 0 && target - todayStats.good === 2) {
+      toast("⚡ Just 2 more ratings to hit your daily target!");
+      lastNotifiedRef.current = key;
+    } else if (todayStats.good > 0 && target - todayStats.good === 1) {
+      toast("🔥 One more rating to hit your target!");
+      lastNotifiedRef.current = key;
+    }
+  }, [todayStats.good, dailyTargetForSummary]);
+
 
   const exportToCSV = () => {
     const monthName = new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long" });
@@ -1431,15 +1478,12 @@ const Index = () => {
           <BreakScheduler />
         </div>
       </div>
-      {/* Month Selector */}
-      <div className="flex items-center justify-between mb-4 gap-2">
-        <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">
-          {new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long", year: "numeric" })}
-        </h1>
+      {/* Header: Month + Quick Actions */}
+      <div className="flex items-center justify-between mb-3 gap-2">
         <div className="flex items-center gap-2">
-          <Button onClick={exportToCSV} variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-            <Download className="h-4 w-4" />
-          </Button>
+          <h1 className="text-lg md:text-xl font-bold text-foreground truncate">
+            {new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "short", year: "numeric" })}
+          </h1>
           <MonthSelector
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
@@ -1447,11 +1491,39 @@ const Index = () => {
             onYearChange={setSelectedYear}
           />
         </div>
+        {activeTab === "overview" && (
+          <QuickActionsBar
+            onAddGood={() => openSmartDialog("good")}
+            onAddBad={() => openSmartDialog("bad")}
+            onExport={exportToCSV}
+            onOpenNotes={() => {
+              localStorage.setItem("ktb_active_tab", "notes");
+              window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: "notes" }));
+              setActiveTab("notes");
+            }}
+            focusMode={focusMode}
+            onToggleFocus={() => setFocusMode(!focusMode)}
+          />
+        )}
+        {activeTab !== "overview" && (
+          <Button onClick={exportToCSV} variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+            <Download className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
           {activeTab === "overview" && (
-          <div className="space-y-5 animate-fade-in focus-visible:outline-none">
+          <div className="space-y-4 animate-fade-in focus-visible:outline-none">
             
+            {/* Daily Summary Card - Always visible */}
+            <DailySummaryCard
+              todayGood={todayStats.good}
+              todayBad={todayStats.bad}
+              dailyTarget={dailyTargetForSummary}
+              shiftTimeLeft={nextEvent.countdown}
+              shiftLabel={nextEvent.label}
+            />
+
             {/* Hero Section: CSAT & Karma side by side */}
             <div className="grid grid-cols-2 gap-3">
               <PercentageDisplay
@@ -1466,19 +1538,7 @@ const Index = () => {
               />
             </div>
 
-            {/* Daily Target - Full width priority card */}
-            <DailyTarget
-              currentGood={totalGood}
-              totalNegatives={totalBad}
-              karmaBad={data.karmaBad}
-              selectedMonth={selectedMonth}
-              selectedYear={selectedYear}
-              todayGood={todayStats.good}
-              todayBad={todayStats.bad}
-              remainingWorkingDays={remainingWorkingDays}
-            />
-
-            {/* Metric Counters - Compact grid */}
+            {/* Metric Counters - Always visible even in focus mode */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <MetricCard
                 title="Good"
@@ -1506,21 +1566,38 @@ const Index = () => {
               />
             </div>
 
-            {/* Secondary Info */}
-            <PhoneBonusKPI
-              userId={user.id}
-              selectedMonth={selectedMonth}
-              selectedYear={selectedYear}
-              csatPercentage={csat}
-              totalSurveys={totalSurveys}
-            />
+            {/* Below here hidden in Focus Mode */}
+            {!focusMode && (
+              <>
+                {/* Daily Target - Full detail */}
+                <DailyTarget
+                  currentGood={totalGood}
+                  totalNegatives={totalBad}
+                  karmaBad={data.karmaBad}
+                  selectedMonth={selectedMonth}
+                  selectedYear={selectedYear}
+                  todayGood={todayStats.good}
+                  todayBad={todayStats.bad}
+                  remainingWorkingDays={remainingWorkingDays}
+                />
 
-            {/* Survey Conversion */}
-            <SurveyConversion
-              userId={user.id}
-              selectedMonth={selectedMonth}
-              selectedYear={selectedYear}
-            />
+                {/* Secondary Info */}
+                <PhoneBonusKPI
+                  userId={user.id}
+                  selectedMonth={selectedMonth}
+                  selectedYear={selectedYear}
+                  csatPercentage={csat}
+                  totalSurveys={totalSurveys}
+                />
+
+                {/* Survey Conversion */}
+                <SurveyConversion
+                  userId={user.id}
+                  selectedMonth={selectedMonth}
+                  selectedYear={selectedYear}
+                />
+              </>
+            )}
           </div>
           )}
 
