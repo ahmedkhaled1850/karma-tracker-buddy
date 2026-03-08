@@ -134,11 +134,12 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   // KPI payout calculation
   const kpiPayout = useMemo(() => {
     if (baseSalary == null) return null;
-    const kpiPool = baseSalary * 0.7;
-    const grossBonus = kpiPool * (finalBonus / 100);
+    const kpiPoolGross = baseSalary * 0.7;
     const tax = taxRate != null ? taxRate / 100 : 0;
+    const kpiPoolNet = kpiPoolGross * (1 - tax);
+    const grossBonus = kpiPoolGross * (finalBonus / 100);
     const netBonus = grossBonus * (1 - tax);
-    return { kpiPool, grossBonus, netBonus };
+    return { kpiPoolNet, grossBonus, netBonus };
   }, [baseSalary, taxRate, finalBonus]);
 
   if (loading) {
@@ -281,8 +282,8 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-muted/50 p-3 rounded-lg text-center">
-                <p className="text-[10px] text-muted-foreground mb-1">KPI Pool (70%)</p>
-                <p className="text-sm font-bold">{kpiPayout.kpiPool.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mb-1">KPI Pool (Net)</p>
+                <p className="text-sm font-bold">{kpiPayout.kpiPoolNet.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
               <div className="bg-muted/50 p-3 rounded-lg text-center">
                 <p className="text-[10px] text-muted-foreground mb-1">Gross Bonus</p>
