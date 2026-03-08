@@ -136,6 +136,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
           break2: globalSettings?.break2_time || "14:00",
           break3: globalSettings?.break3_time || "17:00",
         };
+        let todayShiftEnd = "";
 
         // Check daily_shifts for today
         const todayStr = new Date().toISOString().split("T")[0];
@@ -149,6 +150,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
         if (dailyShift) {
           const ds = dailyShift as unknown as DailyShift;
           if (ds.shift_start) todayShiftStart = ds.shift_start;
+          if (ds.shift_end) todayShiftEnd = ds.shift_end;
           // Use daily shift values directly — empty/null means no break scheduled
           todayBreaks.break1 = ds.break1_time || "";
           todayBreaks.break2 = ds.break2_time || "";
@@ -158,6 +160,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
           const staticShift = getStaticShift(todayStr);
           if (staticShift && !staticShift.is_off_day) {
             if (staticShift.shift_start) todayShiftStart = staticShift.shift_start;
+            if (staticShift.shift_end) todayShiftEnd = staticShift.shift_end;
             if (staticShift.break1_time) todayBreaks.break1 = staticShift.break1_time;
             if (staticShift.break2_time) todayBreaks.break2 = staticShift.break2_time;
             if (staticShift.break3_time) todayBreaks.break3 = staticShift.break3_time;
@@ -165,6 +168,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
         }
 
         setShiftStart(todayShiftStart);
+        setShiftEnd(todayShiftEnd);
         setSchedule(todayBreaks);
       } catch (error) {
         console.error("Error loading break settings:", error);
