@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, Save } from "lucide-react";
+import { User, Lock, Save, DollarSign } from "lucide-react";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { useTheme } from "next-themes";
 
@@ -37,6 +37,11 @@ export default function Settings() {
   const [username, setUsername] = useState("");
   const [autosaveMode, setAutosaveMode] = useState<"manual" | "immediate" | "hourly">("manual");
   const [appTheme, setAppTheme] = useState<string>("dark");
+  
+  // Salary State
+  const [baseSalary, setBaseSalary] = useState<string>("");
+  const [taxRate, setTaxRate] = useState<string>("");
+  const [isSalarySaving, setIsSalarySaving] = useState(false);
   
   // Password State
   const [oldPassword, setOldPassword] = useState("");
@@ -71,6 +76,57 @@ export default function Settings() {
     }
     if (theme) setAppTheme(theme);
   }, [profile, user]);
+
+  // Load salary settings
+  useEffect(() => {
+    const loadSalary = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from('user_settings')
+        .select('base_salary, tax_rate')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data) {
+        if ((data as any).base_salary != null) setBaseSalary(String((data as any).base_salary));
+        if ((data as any).tax_rate != null) setTaxRate(String((data as any).tax_rate));
+      }
+    };
+    loadSalary();
+  }, [user?.id]);
+
+  const onSalarySave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+    setIsSalarySaving(true);
+    try {
+      const salaryVal = baseSalary ? parseFloat(baseSalary) : null;
+      const taxVal = taxRate ? parseFloat(taxRate) : null;
+      
+      const { data: existing } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('user_settings')
+          .update({ base_salary: salaryVal, tax_rate: taxVal } as any)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('user_settings')
+          .insert({ user_id: user.id, base_salary: salaryVal, tax_rate: taxVal } as any);
+        if (error) throw error;
+      }
+      toast.success("Salary settings saved");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save");
+    } finally {
+      setIsSalarySaving(false);
+    }
+  };
 
   // Update Profile Mutation
   const updateProfileMutation = useMutation({
@@ -180,6 +236,7 @@ export default function Settings() {
         <Tabs defaultValue="account" className="space-y-4">
             <TabsList>
                 <TabsTrigger value="account" className="flex items-center gap-2"><User className="h-4 w-4"/> Account</TabsTrigger>
+                <TabsTrigger value="salary" className="flex items-center gap-2"><DollarSign className="h-4 w-4"/> Salary & KPI</TabsTrigger>
                 <TabsTrigger value="security" className="flex items-center gap-2"><Lock className="h-4 w-4"/> Security</TabsTrigger>
             </TabsList>
 
@@ -240,6 +297,53 @@ export default function Settings() {
                             </div>
                             <Button type="submit" disabled={isProfileLoading || updateProfileMutation.isPending}>
                                 <Save className="mr-2 h-4 w-4" /> Save Changes
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="salary">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Salary & KPI Settings</CardTitle>
+                        <CardDescription>Enter your base salary and tax rate to calculate your KPI bonus payout.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={onSalarySave} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Base Salary (Monthly)</Label>
+                                <Input
+                                    type="number"
+                                    value={baseSalary}
+                                    onChange={(e) => setBaseSalary(e.target.value)}
+                                    placeholder="e.g. 5000"
+                                    step="0.01"
+                                    min="0"
+                                />
+                                <p className="text-xs text-muted-foreground">Your gross monthly salary before deductions</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Tax Rate (%)</Label>
+                                <Input
+                                    type="number"
+                                    value={taxRate}
+                                    onChange={(e) => setTaxRate(e.target.value)}
+                                    placeholder="e.g. 14.5"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                />
+                                <p className="text-xs text-muted-foreground">Percentage deducted from your KPI bonus (taxes & insurance)</p>
+                            </div>
+                            <div className="bg-muted/50 p-4 rounded-lg space-y-1 text-sm">
+                                <p className="font-medium">How KPI Payout is Calculated:</p>
+                                <p className="text-muted-foreground">KPI Pool = Base Salary × 70%</p>
+                                <p className="text-muted-foreground">Gross Bonus = KPI Pool × Final KPI %</p>
+                                <p className="text-muted-foreground">Net Bonus = Gross Bonus × (1 - Tax Rate %)</p>
+                            </div>
+                            <Button type="submit" disabled={isSalarySaving}>
+                                <Save className="mr-2 h-4 w-4" /> {isSalarySaving ? "Saving..." : "Save Salary Settings"}
                             </Button>
                         </form>
                     </CardContent>

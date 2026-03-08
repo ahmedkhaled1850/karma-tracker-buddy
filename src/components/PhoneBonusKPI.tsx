@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, SmilePlus, CalendarOff, Trophy } from "lucide-react";
+import { Phone, SmilePlus, CalendarOff, Trophy, DollarSign } from "lucide-react";
 
 interface PhoneBonusKPIProps {
   userId: string;
@@ -57,6 +57,8 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   const [totalCalls, setTotalCalls] = useState(0);
   const [recordedDays, setRecordedDays] = useState(0);
   const [absenceDays, setAbsenceDays] = useState(0);
+  const [baseSalary, setBaseSalary] = useState<number | null>(null);
+  const [taxRate, setTaxRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -96,6 +98,18 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
         ).length;
 
         setAbsenceDays(absence);
+
+        // Load salary settings
+        const { data: settings } = await supabase
+          .from('user_settings')
+          .select('base_salary, tax_rate')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (settings) {
+          setBaseSalary((settings as any).base_salary ?? null);
+          setTaxRate((settings as any).tax_rate ?? null);
+        }
       } catch (error) {
         console.error('Error loading KPI data:', error);
       } finally {
@@ -116,6 +130,16 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
     const base = (productivityScore * 0.5) + (csatScore * 0.5);
     return (base * absenceGate) / 100;
   }, [productivityScore, csatScore, absenceGate]);
+
+  // KPI payout calculation
+  const kpiPayout = useMemo(() => {
+    if (baseSalary == null) return null;
+    const kpiPool = baseSalary * 0.7;
+    const grossBonus = kpiPool * (finalBonus / 100);
+    const tax = taxRate != null ? taxRate / 100 : 0;
+    const netBonus = grossBonus * (1 - tax);
+    return { kpiPool, grossBonus, netBonus };
+  }, [baseSalary, taxRate, finalBonus]);
 
   if (loading) {
     return (
@@ -167,7 +191,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
           </div>
           {productivityScore < 100 && recordedDays > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
-              📈 تحتاج <span className="font-bold text-primary">{Math.ceil((30 * recordedDays) - totalCalls)}</span> مكالمة إضافية للوصول لـ 100% (30 calls/day)
+              📈 Need <span className="font-bold text-primary">{Math.ceil((30 * recordedDays) - totalCalls)}</span> more calls to reach 100% (30 calls/day)
             </p>
           )}
         </div>
@@ -247,6 +271,41 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             </span>
           </div>
         </div>
+
+        {/* KPI Payout */}
+        {kpiPayout && (
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold">Estimated KPI Payout</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-muted/50 p-3 rounded-lg text-center">
+                <p className="text-[10px] text-muted-foreground mb-1">KPI Pool (70%)</p>
+                <p className="text-sm font-bold">{kpiPayout.kpiPool.toLocaleString()}</p>
+              </div>
+              <div className="bg-muted/50 p-3 rounded-lg text-center">
+                <p className="text-[10px] text-muted-foreground mb-1">Gross Bonus</p>
+                <p className="text-sm font-bold">{kpiPayout.grossBonus.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              </div>
+              <div className="bg-primary/10 p-3 rounded-lg text-center border border-primary/20">
+                <p className="text-[10px] text-muted-foreground mb-1">Net Bonus{taxRate != null ? ` (-${taxRate}%)` : ''}</p>
+                <p className="text-lg font-bold text-primary">{kpiPayout.netBonus.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Based on base salary of {baseSalary?.toLocaleString()}{taxRate != null ? ` with ${taxRate}% tax` : ''}
+            </p>
+          </div>
+        )}
+
+        {!kpiPayout && (
+          <div className="border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground text-center">
+              💡 Set your base salary in Settings → Salary & KPI to see your estimated payout
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
