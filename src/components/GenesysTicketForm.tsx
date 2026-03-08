@@ -30,8 +30,6 @@ export const GenesysTicketForm = ({
   tickets, 
   onTicketsChange, 
   totalGood = 0,
-  goodByChannel = { phone: 0, chat: 0, email: 0 },
-  onGoodByChannelChange,
 }: GenesysTicketFormProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newTicket, setNewTicket] = useState<GenesysTicket>({
