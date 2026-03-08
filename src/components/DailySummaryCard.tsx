@@ -1,6 +1,5 @@
-import { useMemo, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { TrendingUp, Clock, Target, Zap, CheckCircle2 } from "lucide-react";
+import { Clock, Target, Zap, CheckCircle2 } from "lucide-react";
 
 interface DailySummaryCardProps {
   todayGood: number;
