@@ -85,6 +85,10 @@ const Index = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [celebrationType, setCelebrationType] = useState<"confetti" | "firework" | null>(null);
+  const [celebrationTrigger, setCelebrationTrigger] = useState(false);
+  const prevKpiRef = useRef(0);
+  const { checkKPIAlerts, checkDailyTargetAlerts } = useMotivationalAlerts();
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("ktb_active_tab") || "overview";
