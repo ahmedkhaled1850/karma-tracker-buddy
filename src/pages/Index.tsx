@@ -1333,29 +1333,18 @@ const Index = () => {
   const totalKarmaBase = useMemo(() => totalGood + totalBad + data.karmaBad, [totalGood, totalBad, data.karmaBad]);
   const karma = useMemo(() => totalKarmaBase > 0 ? (totalGood / totalKarmaBase) * 100 : 0, [totalGood, totalKarmaBase]);
 
-  // Channel distribution for good ratings: use goodByChannel from performance_data
-  // These fields track the actual channel distribution of good ratings
+  // Channel distribution for good ratings: derive from actual genesys tickets
   const goodByChannelWithGenesys = useMemo(() => {
-    const perfGoodPhone = data.goodByChannel?.phone || 0;
-    const perfGoodChat = data.goodByChannel?.chat || 0;
-    const perfGoodEmail = data.goodByChannel?.email || 0;
-    const perfTotal = perfGoodPhone + perfGoodChat + perfGoodEmail;
-    
-    if (perfTotal === 0 || perfTotal < totalGood) {
-      // If no channel distribution set, or it's incomplete, attribute remaining to Phone
-      const remainder = totalGood - perfTotal;
-      return {
-        phone: perfGoodPhone + remainder,
-        chat: perfGoodChat,
-        email: perfGoodEmail,
-      };
-    }
-    return {
-      phone: perfGoodPhone,
-      chat: perfGoodChat,
-      email: perfGoodEmail,
-    };
-  }, [data.goodByChannel, totalGood]);
+    const counts = { phone: 0, chat: 0, email: 0 };
+    genesysTickets.forEach(t => {
+      const isGood = t.ratingScore >= 7 && t.ratingScore <= 9;
+      if (isGood) {
+        const ch = (t.channel || "Phone").toLowerCase() as "phone" | "chat" | "email";
+        counts[ch]++;
+      }
+    });
+    return counts;
+  }, [genesysTickets]);
 
   // Channel distribution for bad ratings: get from DSAT tickets
   const badByChannel = useMemo(() => {
