@@ -49,6 +49,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
             transportAllowance: d.transportation_allowance ?? 0,
             internetAllowance: d.internet_allowance ?? 0,
             seniorBonus: d.senior_bonus ?? 0,
+            languageAllowance: d.language_allowance ?? 0,
           });
         }
       } catch (err) {
