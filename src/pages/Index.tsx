@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { ThumbsUp, ThumbsDown, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { CelebrationAnimation } from "@/components/CelebrationAnimation";
+import { useMotivationalAlerts } from "@/hooks/useMotivationalAlerts";
 import { DailySummaryCard } from "@/components/DailySummaryCard";
 import { QuickActionsBar } from "@/components/QuickActionsBar";
  
@@ -83,6 +85,10 @@ const Index = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [celebrationType, setCelebrationType] = useState<"confetti" | "firework" | null>(null);
+  const [celebrationTrigger, setCelebrationTrigger] = useState(false);
+  const prevKpiRef = useRef(0);
+  const { checkKPIAlerts, checkDailyTargetAlerts } = useMotivationalAlerts();
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("ktb_active_tab") || "overview";
@@ -1433,26 +1439,26 @@ const Index = () => {
     return needed / Math.max(1, days);
   }, [totalGood, totalBad, data.karmaBad, remainingWorkingDays]);
 
-  // Smart notifications for target achievement
-  const lastNotifiedRef = useRef<string>("");
+  // Motivational alerts for daily target
   useEffect(() => {
-    const key = `${todayStats.good}-${Math.ceil(dailyTargetForSummary)}`;
-    if (key === lastNotifiedRef.current) return;
-    
-    const target = Math.ceil(dailyTargetForSummary);
-    if (target <= 0) return;
-    
-    if (todayStats.good === target && todayStats.good > 0) {
-      toast.success("🎯 You reached your daily target! Keep going!");
-      lastNotifiedRef.current = key;
-    } else if (todayStats.good > 0 && target - todayStats.good === 2) {
-      toast("⚡ Just 2 more ratings to hit your daily target!");
-      lastNotifiedRef.current = key;
-    } else if (todayStats.good > 0 && target - todayStats.good === 1) {
-      toast("🔥 One more rating to hit your target!");
-      lastNotifiedRef.current = key;
+    const result = checkDailyTargetAlerts(todayStats.good, dailyTargetForSummary);
+    if (result) {
+      setCelebrationType(result);
+      setCelebrationTrigger(true);
     }
-  }, [todayStats.good, dailyTargetForSummary]);
+  }, [todayStats.good, dailyTargetForSummary, checkDailyTargetAlerts]);
+
+  // KPI milestone celebrations
+  useEffect(() => {
+    if (kpiScore > 0 && prevKpiRef.current !== kpiScore) {
+      const result = checkKPIAlerts(kpiScore, prevKpiRef.current);
+      if (result) {
+        setCelebrationType(result);
+        setCelebrationTrigger(true);
+      }
+      prevKpiRef.current = kpiScore;
+    }
+  }, [kpiScore, checkKPIAlerts]);
 
 
   const exportToCSV = () => {
@@ -1491,6 +1497,12 @@ const Index = () => {
 
   return (
     <div className="relative">
+      {/* Celebration Animation */}
+      <CelebrationAnimation
+        trigger={celebrationTrigger}
+        type={celebrationType || "confetti"}
+        onComplete={() => setCelebrationTrigger(false)}
+      />
       {/* BreakScheduler always mounted for next-event broadcasting */}
       <div className={activeTab === "notes" ? "" : "hidden"}>
         <div className="space-y-4 mb-4">
