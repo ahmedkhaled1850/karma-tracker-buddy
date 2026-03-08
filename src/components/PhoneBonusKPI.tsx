@@ -136,13 +136,13 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   // KPI payout calculation
   const kpiPayout = useMemo(() => {
     if (baseSalary == null) return null;
-    const kpiPoolGross = baseSalary * 0.7;
+    const kpiPoolGross = baseSalary * (kpiPercentage / 100);
     const tax = taxRate != null ? taxRate / 100 : 0;
     const kpiPoolNet = kpiPoolGross * (1 - tax);
     const grossBonus = kpiPoolGross * (finalBonus / 100);
     const netBonus = grossBonus * (1 - tax);
     return { kpiPoolNet, grossBonus, netBonus };
-  }, [baseSalary, taxRate, finalBonus]);
+  }, [baseSalary, taxRate, kpiPercentage, finalBonus]);
 
   if (loading) {
     return (
