@@ -1424,6 +1424,13 @@ const Index = () => {
 
   return (
     <div className="relative">
+      {/* BreakScheduler always mounted for next-event broadcasting */}
+      <div className={activeTab === "notes" ? "" : "hidden"}>
+        <div className="space-y-4 mb-4">
+          <h3 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Break Time ⏱️</h3>
+          <BreakScheduler />
+        </div>
+      </div>
       {/* Month Selector */}
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">
