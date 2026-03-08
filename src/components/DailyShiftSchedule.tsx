@@ -328,20 +328,29 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
 
                       {/* Breaks Detail */}
                       {(shift.break1_time || shift.break2_time || shift.break3_time) && (
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                        <div className="flex flex-wrap gap-1.5 mt-0.5">
                           {shift.break1_time && (
-                            <span className="text-[11px] text-muted-foreground">
-                              <span className="text-foreground/70 font-medium">B1</span> {formatTime12H(shift.break1_time)}–{calcBreakEnd(shift.break1_time, shift.break1_duration || 15)} <span className="text-muted-foreground/60">({shift.break1_duration || 15}m)</span>
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              ☕ <span className="font-medium">{formatTime12H(shift.break1_time)}</span>
+                              <span className="text-amber-500/60">→</span>
+                              <span className="font-medium">{calcBreakEnd(shift.break1_time, shift.break1_duration || 15)}</span>
+                              <span className="text-amber-500/50 text-[10px]">{shift.break1_duration || 15}m</span>
                             </span>
                           )}
                           {shift.break2_time && (
-                            <span className="text-[11px] text-muted-foreground">
-                              <span className="text-foreground/70 font-medium">B2</span> {formatTime12H(shift.break2_time)}–{calcBreakEnd(shift.break2_time, shift.break2_duration || 30)} <span className="text-muted-foreground/60">({shift.break2_duration || 30}m)</span>
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              🍽️ <span className="font-medium">{formatTime12H(shift.break2_time)}</span>
+                              <span className="text-emerald-500/60">→</span>
+                              <span className="font-medium">{calcBreakEnd(shift.break2_time, shift.break2_duration || 30)}</span>
+                              <span className="text-emerald-500/50 text-[10px]">{shift.break2_duration || 30}m</span>
                             </span>
                           )}
                           {shift.break3_time && (
-                            <span className="text-[11px] text-muted-foreground">
-                              <span className="text-foreground/70 font-medium">B3</span> {formatTime12H(shift.break3_time)}–{calcBreakEnd(shift.break3_time, shift.break3_duration || 15)} <span className="text-muted-foreground/60">({shift.break3_duration || 15}m)</span>
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                              ☕ <span className="font-medium">{formatTime12H(shift.break3_time)}</span>
+                              <span className="text-violet-500/60">→</span>
+                              <span className="font-medium">{calcBreakEnd(shift.break3_time, shift.break3_duration || 15)}</span>
+                              <span className="text-violet-500/50 text-[10px]">{shift.break3_duration || 15}m</span>
                             </span>
                           )}
                         </div>
