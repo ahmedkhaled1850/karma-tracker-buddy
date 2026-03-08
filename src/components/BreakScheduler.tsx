@@ -144,11 +144,12 @@ export const BreakScheduler = () => {
            }
         }
 
-        // Apply shift data if available
+        // Apply shift data if available — use exact values (including empty)
         if (currentShift) {
-          if (currentShift.break1_time) initialSchedule.break1 = currentShift.break1_time;
-          if (currentShift.break2_time) initialSchedule.break2 = currentShift.break2_time;
-          if (currentShift.break3_time) initialSchedule.break3 = currentShift.break3_time;
+          // When a shift exists, override ALL breaks — empty means no break
+          initialSchedule.break1 = currentShift.break1_time || "";
+          initialSchedule.break2 = currentShift.break2_time || "";
+          initialSchedule.break3 = currentShift.break3_time || "";
           if (currentShift.shift_start) initialShiftStart = currentShift.shift_start;
         }
 
