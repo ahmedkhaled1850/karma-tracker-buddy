@@ -136,10 +136,10 @@ export default function Settings() {
   };
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (newUsername: string) => {
+    mutationFn: async ({ newUsername, newDisplayName }: { newUsername: string; newDisplayName: string }) => {
       const { error } = await supabase
         .from("profiles")
-        .update({ username: newUsername })
+        .update({ username: newUsername, display_name: newDisplayName } as any)
         .eq("user_id", user?.id || "");
       if (error) throw error;
     },
