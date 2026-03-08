@@ -146,9 +146,14 @@ All colors MUST be HSL.
 
   html {
     scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .drop-shadow-glow {
     filter: drop-shadow(0 0 20px hsl(var(--primary-glow) / 0.5));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
