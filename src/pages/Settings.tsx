@@ -213,9 +213,16 @@ export default function Settings() {
                   <Input value={user?.email || ""} disabled className="bg-muted/50" />
                 </div>
                 <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /> Display Name</Label>
+                  <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your display name"
+                    disabled={isProfileLoading || updateProfileMutation.isPending} />
+                  <p className="text-[11px] text-muted-foreground">The name shown to others</p>
+                </div>
+                <div className="space-y-2">
                   <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /> Username</Label>
                   <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter username"
                     disabled={isProfileLoading || updateProfileMutation.isPending} />
+                  <p className="text-[11px] text-muted-foreground">3-20 characters, used as your unique identifier</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
