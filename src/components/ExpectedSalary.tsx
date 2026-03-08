@@ -70,12 +70,13 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
     const transport = settings.transportAllowance;
     const internet = settings.internetAllowance;
     const senior = settings.seniorBonus;
+    const language = settings.languageAllowance;
 
-    const gross = base + kpiBonus + transport + internet + senior;
+    const gross = base + kpiBonus + transport + internet + senior + language;
     const taxDeduction = settings.taxRate != null ? gross * (settings.taxRate / 100) : 0;
     const net = gross - taxDeduction;
 
-    return { base, kpiPool, kpiBonus, transport, internet, senior, gross, taxDeduction, net };
+    return { base, kpiPool, kpiBonus, transport, internet, senior, language, gross, taxDeduction, net };
   }, [settings, kpiScore]);
 
   if (loading) {
