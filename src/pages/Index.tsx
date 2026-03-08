@@ -1560,6 +1560,13 @@ const Index = () => {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">📈 Analytics & Progress</h2>
 
+              {/* FCR Score */}
+              <FCRMetric
+                value={data.fcr}
+                onChange={(value) => setData((prev) => ({ ...prev, fcr: value }))}
+                previousValue={previousMonthData?.fcr}
+              />
+
               {/* Phone Bonus KPI */}
               <PhoneBonusKPI
                 userId={user.id}
