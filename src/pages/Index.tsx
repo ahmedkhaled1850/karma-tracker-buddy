@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { ThumbsUp, ThumbsDown, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Download, ThumbsUp, ThumbsDown, AlertTriangle, LogOut, Clock } from "lucide-react";
 import { toast } from "sonner";
  
 import { MetricCard } from "@/components/MetricCard";
@@ -71,7 +71,7 @@ interface TodayStats {
 }
 
 const Index = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [performanceId, setPerformanceId] = useState<string | null>(null);
@@ -135,21 +135,6 @@ const Index = () => {
   const [monthlyChangeLog, setMonthlyChangeLog] = useState<any[]>([]);
   const [shiftStartTime, setShiftStartTime] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
-  const [nextEvent, setNextEvent] = useState<{ countdown: string; label: string }>({ countdown: "", label: "" });
-
-  // Listen for next event broadcasts from BreakScheduler
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<{ countdown: string; label: string }>;
-      if (ce.detail) setNextEvent(ce.detail);
-    };
-    window.addEventListener("ktb_next_event", handler as EventListener);
-    try {
-      const stored = localStorage.getItem("ktb_next_event");
-      if (stored) setNextEvent(JSON.parse(stored));
-    } catch {}
-    return () => window.removeEventListener("ktb_next_event", handler as EventListener);
-  }, []);
   const [selectedThreeMonths, setSelectedThreeMonths] = useState<Array<{ month: number; year: number }>>(() => {
     const now = new Date();
     const m = now.getMonth();
@@ -1438,49 +1423,16 @@ const Index = () => {
 
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
-      {/* Decorative Background Elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-primary opacity-[0.08] rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-success opacity-[0.06] rounded-full blur-[100px]"></div>
-      </div>
-
-      {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm animate-slide-up">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="text-center md:text-left">
-              <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-2 animate-fade-in">
-                Big Brother
-              </h1>
-              <p className="text-base text-muted-foreground">The big brother who will care for you at work and help you</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {nextEvent.countdown && nextEvent.label && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span className="text-xs text-muted-foreground">{nextEvent.label}</span>
-                  <span className="text-sm font-mono font-bold text-primary">{nextEvent.countdown}</span>
-                </div>
-              )}
-              {isSaving && (
-                <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
-              )}
-              <Button onClick={exportToCSV} variant="outline" size="lg">
-                <Download className="mr-2 h-5 w-5" /> Export CSV
-              </Button>
-              <Button onClick={signOut} variant="ghost" size="lg">
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
- 
-
-      <main className="container mx-auto px-6 py-10 mt-6 relative z-10">
-        <div className="w-full flex justify-end">
+    <div className="relative">
+      {/* Month Selector */}
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">
+          {new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long", year: "numeric" })}
+        </h1>
+        <div className="flex items-center gap-2">
+          <Button onClick={exportToCSV} variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+            <Download className="h-4 w-4" />
+          </Button>
           <MonthSelector
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
@@ -1488,11 +1440,12 @@ const Index = () => {
             onYearChange={setSelectedYear}
           />
         </div>
+      </div>
 
           {activeTab === "overview" && (
-          <div className="space-y-8 animate-fade-in focus-visible:outline-none">
+          <div className="space-y-4 md:space-y-8 animate-fade-in focus-visible:outline-none">
             {/* Main Performance Cards - CSAT & Karma */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-scale-in">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-8 animate-scale-in">
               <PercentageDisplay
                 title="Customer Satisfaction (CSAT)"
                 percentage={csat}
@@ -1539,8 +1492,8 @@ const Index = () => {
 
             {/* Metrics Cards */}
             <div>
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">📊 Rating Metrics</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6 bg-gradient-primary bg-clip-text text-transparent">📊 Rating Metrics</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
                 <MetricCard
                   title="Good Ratings"
                   value={totalGood}
@@ -1707,16 +1660,7 @@ const Index = () => {
              </div>
           </div>
           )}
-      </main>
 
-      <footer className="border-t border-border bg-card mt-16 animate-fade-in">
-        <div className="container mx-auto px-6 py-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Big Brother • The big brother who will care for you at work and help you
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">Made with Ahmed Khaled's magic</p>
-        </div>
-      </footer>
       {/* Smart Rating Dialog */}
       <SmartRatingDialog
         isOpen={smartDialogOpen}

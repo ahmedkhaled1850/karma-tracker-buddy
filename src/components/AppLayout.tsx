@@ -3,32 +3,51 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
-import { Menu, Settings, LogOut, Plus, Minus, ListChecks, BarChart3, NotebookText, ClipboardList, Calendar } from "lucide-react";
+import { BarChart3, ListChecks, NotebookText, ClipboardList, Calendar, Settings, LogOut, Plus, Minus, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
+const MOBILE_TABS = [
+  { tab: "overview", label: "Overview", icon: BarChart3 },
+  { tab: "tickets", label: "Tickets", icon: ListChecks },
+  { tab: "analytics", label: "Analytics", icon: BarChart3 },
+  { tab: "notes", label: "Notes", icon: NotebookText },
+  { tab: "log", label: "Log", icon: ClipboardList },
+];
+
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, signOut, isLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-      // Persist sidebar state
-      if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('sidebarCollapsed');
-          return saved === 'true';
-      }
-      return false;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved === 'true';
+    }
+    return false;
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    try { return localStorage.getItem("ktb_active_tab") || "overview"; } catch { return "overview"; }
   });
 
   useEffect(() => {
-      localStorage.setItem('sidebarCollapsed', sidebarCollapsed.toString());
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<string>;
+      if (ce.detail) setActiveTab(ce.detail);
+    };
+    window.addEventListener("ktb_tab_change", handler as EventListener);
+    return () => window.removeEventListener("ktb_tab_change", handler as EventListener);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', sidebarCollapsed.toString());
   }, [sidebarCollapsed]);
 
   const { data: profile } = useQuery({
@@ -46,24 +65,38 @@ export default function AppLayout({ children }: AppLayoutProps) {
   });
 
   const name = profile?.username || user?.email || "";
-  const email = user?.email || "";
   const initials = name ? name.slice(0, 2).toUpperCase() : "";
 
-  
   const [initialLoading, setInitialLoading] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setInitialLoading(false), 400);
     return () => clearTimeout(t);
   }, []);
-  // Only show loader on initial load or auth loading, NOT on background refetches
   const showLoader = initialLoading || isLoading;
 
-  const links = [
-    { name: "Settings", href: "/settings", icon: Settings },
-    { name: "Work Schedule", href: "/work-schedule", icon: Calendar },
-  ];
+  // Next event from BreakScheduler
+  const [nextEvent, setNextEvent] = useState<{ countdown: string; label: string }>({ countdown: "", label: "" });
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ countdown: string; label: string }>;
+      if (ce.detail) setNextEvent(ce.detail);
+    };
+    window.addEventListener("ktb_next_event", handler as EventListener);
+    try {
+      const stored = localStorage.getItem("ktb_next_event");
+      if (stored) setNextEvent(JSON.parse(stored));
+    } catch {}
+    return () => window.removeEventListener("ktb_next_event", handler as EventListener);
+  }, []);
 
-  const navigate = useNavigate();
+  const handleTabClick = (tab: string) => {
+    localStorage.setItem("ktb_active_tab", tab);
+    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: tab })); } catch {}
+    setActiveTab(tab);
+    if (location.pathname !== "/") navigate("/");
+  };
+
+  const isOnHome = location.pathname === "/";
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -77,148 +110,174 @@ export default function AppLayout({ children }: AppLayoutProps) {
           sidebarCollapsed ? "md:ml-16" : "md:ml-64"
         )}
       >
-        
-        {/* Mobile Header */}
-        <header className="md:hidden border-b bg-card sticky top-0 z-40 backdrop-blur-sm">
-          <div className="container px-4 py-3 flex items-center justify-between">
-            <span className="font-bold text-lg bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Big Brother
-            </span>
+        {/* Mobile Top Bar - Slim */}
+        <header className="md:hidden border-b bg-card/95 backdrop-blur-md sticky top-0 z-40">
+          <div className="px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <Card className="px-2 py-1 flex items-center gap-2 border-none shadow-none bg-transparent">
-                    <Avatar className="h-7 w-7">
-                        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                    </Avatar>
-                </Card>
-                <Sheet>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                    <Menu className="h-5 w-5" />
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-64">
-                    <div className="h-full flex flex-col bg-card">
-                    <div className="p-6 border-b">
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                        Big Brother
-                        </h1>
-                    </div>
-                    <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-                        <div className="space-y-1">
-                            {[
-                              { tab: "overview", name: "Overview 📊", icon: BarChart3 },
-                              { tab: "tickets", name: "Tickets 🎫", icon: ListChecks },
-                              { tab: "analytics", name: "Analytics 📈", icon: BarChart3 },
-                              { tab: "notes", name: "Notes & Schedule 📝", icon: NotebookText },
-                              { tab: "log", name: "Log 📋", icon: ClipboardList },
-                            ].map((tl) => {
-                              const Icon = tl.icon;
-                              const mobileActiveTab = (() => { try { return localStorage.getItem("ktb_active_tab") || "overview"; } catch { return "overview"; } })();
-                              const isActive = location.pathname === "/" && mobileActiveTab === tl.tab;
-                              return (
-                                <Button
-                                  key={tl.tab}
-                                  variant="ghost"
-                                  className={cn(
-                                    "w-full justify-start gap-3 transition-all",
-                                    isActive && "bg-primary/10 text-primary border border-primary/20 font-medium"
-                                  )}
-                                  onClick={() => {
-                                    localStorage.setItem("ktb_active_tab", tl.tab);
-                                    try { window.dispatchEvent(new CustomEvent("ktb_tab_change", { detail: tl.tab })); } catch {}
-                                    navigate("/");
-                                  }}
-                                >
-                                  <Icon className="h-5 w-5" />
-                                  <span>{tl.name}</span>
-                                </Button>
-                              );
-                            })}
-                        </div>
-                        {links.map((link) => {
-                        const Icon = link.icon;
-                        const isActive = location.pathname === link.href;
-                        
-                        return (
-                            <Link key={link.href} to={link.href}>
-                            <Button
-                                variant={isActive ? "secondary" : "ghost"}
-                                className={cn(
-                                "w-full justify-start gap-3 mb-1",
-                                isActive && "bg-secondary font-medium"
-                                )}
-                            >
-                                <Icon className="h-5 w-5" />
-                                {link.name}
-                            </Button>
-                            </Link>
-                        );
-                        })}
-                    </div>
-                    <div className="p-4 border-t">
-                        <div className="mb-4 px-2">
-                            <p className="text-sm font-medium truncate">{name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{email}</p>
-                        </div>
-                        <Button variant="outline" className="w-full justify-start gap-3" onClick={signOut}>
-                        <LogOut className="h-5 w-5" />
-                        Sign Out
-                        </Button>
-                    </div>
-                    </div>
-                </SheetContent>
-                </Sheet>
+              <Avatar className="h-7 w-7 border border-border">
+                <AvatarFallback className="text-[10px] font-bold">{initials}</AvatarFallback>
+              </Avatar>
+              <span className="font-bold text-sm bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Big Brother
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {nextEvent.countdown && nextEvent.label && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10">
+                  <Clock className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] font-mono font-bold text-primary">{nextEvent.countdown}</span>
+                </div>
+              )}
+              <Button 
+                size="icon" 
+                className="h-7 w-7 rounded-md bg-success/15 text-success hover:bg-success/25"
+                onClick={() => {
+                  try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "good" })); } catch {}
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <Button 
+                size="icon" 
+                className="h-7 w-7 rounded-md bg-destructive/15 text-destructive hover:bg-destructive/25"
+                onClick={() => {
+                  try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "bad" })); } catch {}
+                }}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
         </header>
 
         {/* Desktop Header */}
         <header className="hidden md:flex items-center justify-between gap-4 px-4 py-3 border-b bg-card/70 backdrop-blur-md sticky top-0 z-30">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9 border border-border">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-              <div className="leading-tight">
-                <div className="text-sm font-semibold">{name}</div>
-                <div className="text-xs text-muted-foreground">{email}</div>
-              </div>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9 border border-border">
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="leading-tight">
+              <div className="text-sm font-semibold">{name}</div>
+              <div className="text-xs text-muted-foreground">{user?.email || ""}</div>
             </div>
-            <div className="flex items-center justify-center">
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 px-2 py-1 shadow-sm">
-                <Button 
-                  size="sm" 
-                  className="h-9 px-4 rounded-lg bg-success/15 text-success hover:bg-success/25"
-                  onClick={() => {
-                    try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "good" })); } catch {}
-                  }}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  <span className="font-medium">Add Good</span>
-                </Button>
-                <Button 
-                  size="sm" 
-                  className="h-9 px-4 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive/25"
-                  onClick={() => {
-                    try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "bad" })); } catch {}
-                  }}
-                >
-                  <Minus className="mr-2 h-4 w-4" />
-                  <span className="font-medium">Add Bad</span>
-                </Button>
+          </div>
+          <div className="flex items-center gap-3">
+            {nextEvent.countdown && nextEvent.label && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                <Clock className="h-4 w-4 text-primary" />
+                <span className="text-xs text-muted-foreground">{nextEvent.label}</span>
+                <span className="text-sm font-mono font-bold text-primary">{nextEvent.countdown}</span>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={signOut}>
-                <LogOut className="h-5 w-5" />
+            )}
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-background/60 px-2 py-1 shadow-sm">
+              <Button 
+                size="sm" 
+                className="h-9 px-4 rounded-lg bg-success/15 text-success hover:bg-success/25"
+                onClick={() => {
+                  try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "good" })); } catch {}
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="font-medium">Add Good</span>
+              </Button>
+              <Button 
+                size="sm" 
+                className="h-9 px-4 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive/25"
+                onClick={() => {
+                  try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "bad" })); } catch {}
+                }}
+              >
+                <Minus className="mr-2 h-4 w-4" />
+                <span className="font-medium">Add Bad</span>
               </Button>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={signOut}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
 
-        <main className="flex-1 container mx-auto px-4 py-6 md:px-8 md:py-8 animate-fade-in">
-            {children}
+        {/* Main Content - extra bottom padding on mobile for bottom nav */}
+        <main className="flex-1 px-3 py-4 md:px-8 md:py-8 pb-20 md:pb-8 animate-fade-in">
+          {children}
         </main>
       </div>
 
+      {/* Mobile Bottom Navigation */}
+      {isOnHome && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border safe-area-bottom">
+          <div className="flex items-center justify-around px-1 py-1.5">
+            {MOBILE_TABS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.tab;
+              return (
+                <button
+                  key={item.tab}
+                  onClick={() => handleTabClick(item.tab)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-all min-w-0 flex-1",
+                    isActive 
+                      ? "text-primary bg-primary/10" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5", isActive && "text-primary")} />
+                  <span className={cn(
+                    "text-[10px] font-medium truncate",
+                    isActive && "text-primary font-semibold"
+                  )}>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
+      {/* Mobile bottom nav for non-home pages */}
+      {!isOnHome && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border safe-area-bottom">
+          <div className="flex items-center justify-around px-1 py-1.5">
+            <button
+              onClick={() => navigate("/")}
+              className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg text-muted-foreground hover:text-foreground flex-1"
+            >
+              <BarChart3 className="h-5 w-5" />
+              <span className="text-[10px] font-medium">Home</span>
+            </button>
+            <Link to="/work-schedule" className="flex-1">
+              <button
+                className={cn(
+                  "flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg w-full transition-all",
+                  location.pathname === "/work-schedule" ? "text-primary bg-primary/10" : "text-muted-foreground"
+                )}
+              >
+                <Calendar className="h-5 w-5" />
+                <span className="text-[10px] font-medium">Schedule</span>
+              </button>
+            </Link>
+            <Link to="/settings" className="flex-1">
+              <button
+                className={cn(
+                  "flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg w-full transition-all",
+                  location.pathname === "/settings" ? "text-primary bg-primary/10" : "text-muted-foreground"
+                )}
+              >
+                <Settings className="h-5 w-5" />
+                <span className="text-[10px] font-medium">Settings</span>
+              </button>
+            </Link>
+            <button
+              onClick={signOut}
+              className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg text-muted-foreground hover:text-foreground flex-1"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="text-[10px] font-medium">Logout</span>
+            </button>
+          </div>
+        </nav>
+      )}
 
       {showLoader && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center">
