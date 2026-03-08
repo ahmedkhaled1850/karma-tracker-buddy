@@ -201,9 +201,12 @@ export const BreakScheduler = () => {
   const nextUp = useMemo(() => {
     if (loading) return null;
     const now = new Date();
+    // Filter out empty breaks
+    const activeBreaks = (["break1", "break2", "break3"] as BreakKey[]).filter(k => schedule[k] && schedule[k].includes(":"));
+    
     // If shift window is known, compute relative to shift
     if (shiftStartDate && shiftEndDate) {
-      const entries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
+      const entries = activeBreaks.map((k) => {
         const [h, m] = schedule[k].split(":").map((x) => parseInt(x, 10));
         let start = new Date(
           shiftStartDate.getFullYear(),
@@ -226,7 +229,7 @@ export const BreakScheduler = () => {
       return next || null;
     }
     // Fallback: compute next scheduled break today/tomorrow even without shift window
-    const entries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
+    const entries = activeBreaks.map((k) => {
       const [h, m] = schedule[k].split(":").map((x) => parseInt(x, 10));
       let start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
       if (start.getTime() <= now.getTime()) {
