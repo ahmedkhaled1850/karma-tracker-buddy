@@ -36,7 +36,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
       try {
         const { data } = await supabase
           .from('user_settings')
-          .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus')
+          .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus, language_allowance')
           .eq('user_id', userId)
           .maybeSingle();
 
