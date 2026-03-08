@@ -691,6 +691,47 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
           </div>
         </div>
       </Card>
+
+      {/* Late Break Dialog */}
+      <Dialog open={lateBreakDialog} onOpenChange={setLateBreakDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" />
+              Log Late Break
+            </DialogTitle>
+          </DialogHeader>
+          {lateBreakKey && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 space-y-1">
+                <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{BREAK_LABELS[lateBreakKey]}</p>
+                <p className="text-xs text-muted-foreground">
+                  Scheduled at: <span className="font-mono font-medium">{formatTime12H(schedule[lateBreakKey])}</span>
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Actual break time</Label>
+                <Input
+                  type="time"
+                  value={lateBreakActualTime}
+                  onChange={(e) => setLateBreakActualTime(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLateBreakDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleSaveLateBreak}
+              disabled={lateBreakSaving || !lateBreakActualTime}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              {lateBreakSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+              Log Late Break
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
