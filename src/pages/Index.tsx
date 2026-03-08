@@ -1608,26 +1608,23 @@ const Index = () => {
                 <MetricCard
                   title="Good"
                   value={totalGood}
-                  onIncrement={() => updateMetric("good", true)}
-                  onDecrement={() => updateMetric("good", false)}
                   color="success"
                   icon={ThumbsUp}
+                  showButtons={false}
                 />
                 <MetricCard
                   title="DSAT"
                   value={totalBad}
-                  onIncrement={() => updateMetric("bad", true)}
-                  onDecrement={() => updateMetric("bad", false)}
                   color="destructive"
                   icon={ThumbsDown}
+                  showButtons={false}
                 />
                 <MetricCard
                   title="Karma"
                   value={data.karmaBad}
-                  onIncrement={() => updateMetric("karmaBad", true)}
-                  onDecrement={() => updateMetric("karmaBad", false)}
                   color="warning"
                   icon={AlertTriangle}
+                  showButtons={false}
                 />
               </div>
             </div>
