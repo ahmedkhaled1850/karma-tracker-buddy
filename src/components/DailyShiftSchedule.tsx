@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getStaticShift, formatTime12H } from "@/lib/staticSchedule";
 import { DailyShift } from "@/lib/types";
-import { STATIC_SCHEDULE } from "@/lib/staticSchedule";
+
 
 interface DailyShiftScheduleProps {
   selectedMonth: number;
