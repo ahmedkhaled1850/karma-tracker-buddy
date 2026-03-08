@@ -1612,6 +1612,7 @@ const Index = () => {
                   onDecrement={() => updateMetric("good", false)}
                   color="success"
                   icon={ThumbsUp}
+                  showButtons={false}
                 />
                 <MetricCard
                   title="DSAT"
@@ -1620,6 +1621,7 @@ const Index = () => {
                   onDecrement={() => updateMetric("bad", false)}
                   color="destructive"
                   icon={ThumbsDown}
+                  showButtons={false}
                 />
                 <MetricCard
                   title="Karma"
@@ -1628,6 +1630,7 @@ const Index = () => {
                   onDecrement={() => updateMetric("karmaBad", false)}
                   color="warning"
                   icon={AlertTriangle}
+                  showButtons={false}
                 />
               </div>
             </div>
