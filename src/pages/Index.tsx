@@ -70,7 +70,7 @@ interface TodayStats {
 }
 
 const Index = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [performanceId, setPerformanceId] = useState<string | null>(null);
