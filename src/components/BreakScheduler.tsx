@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Bell, TimerReset, AlarmClockCheck, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
