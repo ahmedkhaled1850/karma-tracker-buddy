@@ -1438,56 +1438,19 @@ const Index = () => {
 
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
-      {/* Decorative Background Elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-primary opacity-[0.08] rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-success opacity-[0.06] rounded-full blur-[100px]"></div>
+    <div className="relative">
+      {/* Month Selector */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-lg md:text-2xl font-bold text-foreground">
+          {new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long", year: "numeric" })}
+        </h1>
+        <MonthSelector
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+        />
       </div>
-
-      {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm animate-slide-up">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="text-center md:text-left">
-              <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-2 animate-fade-in">
-                Big Brother
-              </h1>
-              <p className="text-base text-muted-foreground">The big brother who will care for you at work and help you</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {nextEvent.countdown && nextEvent.label && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span className="text-xs text-muted-foreground">{nextEvent.label}</span>
-                  <span className="text-sm font-mono font-bold text-primary">{nextEvent.countdown}</span>
-                </div>
-              )}
-              {isSaving && (
-                <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
-              )}
-              <Button onClick={exportToCSV} variant="outline" size="lg">
-                <Download className="mr-2 h-5 w-5" /> Export CSV
-              </Button>
-              <Button onClick={signOut} variant="ghost" size="lg">
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
- 
-
-      <main className="container mx-auto px-6 py-10 mt-6 relative z-10">
-        <div className="w-full flex justify-end">
-          <MonthSelector
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            onMonthChange={setSelectedMonth}
-            onYearChange={setSelectedYear}
-          />
-        </div>
 
           {activeTab === "overview" && (
           <div className="space-y-8 animate-fade-in focus-visible:outline-none">
