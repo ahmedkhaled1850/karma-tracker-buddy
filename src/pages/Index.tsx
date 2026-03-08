@@ -134,21 +134,6 @@ const Index = () => {
   const [monthlyChangeLog, setMonthlyChangeLog] = useState<any[]>([]);
   const [shiftStartTime, setShiftStartTime] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
-  const [nextEvent, setNextEvent] = useState<{ countdown: string; label: string }>({ countdown: "", label: "" });
-
-  // Listen for next event broadcasts from BreakScheduler
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<{ countdown: string; label: string }>;
-      if (ce.detail) setNextEvent(ce.detail);
-    };
-    window.addEventListener("ktb_next_event", handler as EventListener);
-    try {
-      const stored = localStorage.getItem("ktb_next_event");
-      if (stored) setNextEvent(JSON.parse(stored));
-    } catch {}
-    return () => window.removeEventListener("ktb_next_event", handler as EventListener);
-  }, []);
   const [selectedThreeMonths, setSelectedThreeMonths] = useState<Array<{ month: number; year: number }>>(() => {
     const now = new Date();
     const m = now.getMonth();
