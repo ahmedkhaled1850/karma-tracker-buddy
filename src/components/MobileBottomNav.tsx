@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, ListChecks, NotebookText, ClipboardList, MoreHorizontal, Calendar, Settings, LogOut, Home } from "lucide-react";
+import { BarChart3, ListChecks, NotebookText, MoreHorizontal, Calendar, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
