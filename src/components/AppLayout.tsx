@@ -287,7 +287,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     // Only show "next break" while inside the shift window
     if (nowMs < startMs || nowMs > endMs) return null;
 
-    const breaksInShift = (["break1", "break2", "break3"] as BreakKey[])
+    // Filter out empty breaks
+    const activeBreaks = (["break1", "break2", "break3"] as BreakKey[]).filter(k => breakSchedule[k] && breakSchedule[k].includes(":"));
+
+    const breaksInShift = activeBreaks
       .map((k) => {
         const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
         const dt = new Date(
