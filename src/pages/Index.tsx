@@ -1525,8 +1525,6 @@ const Index = () => {
         </div>
         {activeTab === "overview" && (
           <QuickActionsBar
-            onAddGood={() => openSmartDialog("good")}
-            onAddBad={() => openSmartDialog("bad")}
             onExport={exportToCSV}
             onOpenNotes={() => {
               localStorage.setItem("ktb_active_tab", "notes");
