@@ -1,0 +1,1 @@
+ALTER TABLE public.user_settings ADD COLUMN language_allowance numeric DEFAULT 0;

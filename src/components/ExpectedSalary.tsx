@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award } from "lucide-react";
+import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award, Languages } from "lucide-react";
 
 interface ExpectedSalaryProps {
   userId: string;
@@ -17,6 +17,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
     transportAllowance: number;
     internetAllowance: number;
     seniorBonus: number;
+    languageAllowance: number;
   }>({
     baseSalary: null,
     taxRate: null,
@@ -24,6 +25,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
     transportAllowance: 0,
     internetAllowance: 0,
     seniorBonus: 0,
+    languageAllowance: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +36,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
       try {
         const { data } = await supabase
           .from('user_settings')
-          .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus')
+          .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus, language_allowance')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -47,6 +49,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
             transportAllowance: d.transportation_allowance ?? 0,
             internetAllowance: d.internet_allowance ?? 0,
             seniorBonus: d.senior_bonus ?? 0,
+            languageAllowance: d.language_allowance ?? 0,
           });
         }
       } catch (err) {
@@ -67,12 +70,13 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
     const transport = settings.transportAllowance;
     const internet = settings.internetAllowance;
     const senior = settings.seniorBonus;
+    const language = settings.languageAllowance;
 
-    const gross = base + kpiBonus + transport + internet + senior;
+    const gross = base + kpiBonus + transport + internet + senior + language;
     const taxDeduction = settings.taxRate != null ? gross * (settings.taxRate / 100) : 0;
     const net = gross - taxDeduction;
 
-    return { base, kpiPool, kpiBonus, transport, internet, senior, gross, taxDeduction, net };
+    return { base, kpiPool, kpiBonus, transport, internet, senior, language, gross, taxDeduction, net };
   }, [settings, kpiScore]);
 
   if (loading) {
@@ -154,6 +158,16 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
                 <span>Senior Bonus</span>
               </div>
               <span className="font-medium">{fmt(salary.senior)}</span>
+            </div>
+          )}
+
+          {salary.language > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Languages className="h-3.5 w-3.5" />
+                <span>Language Allowance</span>
+              </div>
+              <span className="font-medium">{fmt(salary.language)}</span>
             </div>
           )}
         </div>

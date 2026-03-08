@@ -45,6 +45,7 @@ export default function Settings() {
   const [transportAllowance, setTransportAllowance] = useState<string>("0");
   const [internetAllowance, setInternetAllowance] = useState<string>("0");
   const [seniorBonus, setSeniorBonus] = useState<string>("0");
+  const [languageAllowance, setLanguageAllowance] = useState<string>("0");
   const [isSalarySaving, setIsSalarySaving] = useState(false);
   
   // Password State
@@ -87,7 +88,7 @@ export default function Settings() {
       if (!user?.id) return;
       const { data } = await supabase
         .from('user_settings')
-        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus')
+        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus, language_allowance')
         .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
@@ -98,6 +99,7 @@ export default function Settings() {
         if (d.transportation_allowance != null) setTransportAllowance(String(d.transportation_allowance));
         if (d.internet_allowance != null) setInternetAllowance(String(d.internet_allowance));
         if (d.senior_bonus != null) setSeniorBonus(String(d.senior_bonus));
+        if (d.language_allowance != null) setLanguageAllowance(String(d.language_allowance));
       }
     };
     loadSalary();
@@ -115,6 +117,7 @@ export default function Settings() {
         transportation_allowance: transportAllowance ? parseFloat(transportAllowance) : 0,
         internet_allowance: internetAllowance ? parseFloat(internetAllowance) : 0,
         senior_bonus: seniorBonus ? parseFloat(seniorBonus) : 0,
+        language_allowance: languageAllowance ? parseFloat(languageAllowance) : 0,
       } as any;
       
       const { data: existing } = await supabase
@@ -386,6 +389,17 @@ export default function Settings() {
                                 />
                               </div>
                               <div className="space-y-2">
+                                <Label>Language Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={languageAllowance}
+                                    onChange={(e) => setLanguageAllowance(e.target.value)}
+                                    placeholder="e.g. 400"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
                                 <Label>Tax & Insurance Rate (%)</Label>
                                 <Input
                                     type="number"
@@ -402,7 +416,7 @@ export default function Settings() {
                             <div className="bg-muted/50 p-4 rounded-lg space-y-1 text-sm">
                                 <p className="font-medium">How Expected Salary is Calculated:</p>
                                 <p className="text-muted-foreground">KPI Bonus = Base Salary × KPI% × Final KPI Score</p>
-                                <p className="text-muted-foreground">Gross = Base + KPI Bonus + Transport + Internet + Senior Bonus</p>
+                                <p className="text-muted-foreground">Gross = Base + KPI Bonus + Transport + Internet + Senior + Language</p>
                                 <p className="text-muted-foreground">Net = Gross × (1 - Tax Rate %)</p>
                             </div>
                             <Button type="submit" disabled={isSalarySaving}>
