@@ -61,7 +61,6 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
   const [lateBreakKey, setLateBreakKey] = useState<BreakKey | null>(null);
   const [lateBreakActualTime, setLateBreakActualTime] = useState("");
   const [lateBreakSaving, setLateBreakSaving] = useState(false);
-  const initialLoadRef = useRef(true);
 
   const shiftStartDate = useMemo(() => {
     if (!shiftStart) return null;
