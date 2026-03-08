@@ -117,6 +117,7 @@ export default function Settings() {
         transportation_allowance: transportAllowance ? parseFloat(transportAllowance) : 0,
         internet_allowance: internetAllowance ? parseFloat(internetAllowance) : 0,
         senior_bonus: seniorBonus ? parseFloat(seniorBonus) : 0,
+        language_allowance: languageAllowance ? parseFloat(languageAllowance) : 0,
       } as any;
       
       const { data: existing } = await supabase
