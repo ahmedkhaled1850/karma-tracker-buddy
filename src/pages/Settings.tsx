@@ -69,6 +69,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (profile?.username) setUsername(profile.username);
+    if ((profile as any)?.display_name) setDisplayName((profile as any).display_name);
     const metaMode = (user?.user_metadata as Record<string, unknown> | undefined)?.autosaveMode;
     if (metaMode === "immediate" || metaMode === "hourly" || metaMode === "manual") {
       setAutosaveMode(metaMode as any);
