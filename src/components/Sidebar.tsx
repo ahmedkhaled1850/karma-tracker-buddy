@@ -95,17 +95,15 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex flex-col items-center gap-1 py-2">
-                      {/* Mini circular indicators instead of text */}
                       {(() => {
                         const csatTotal = metrics.totalGood + metrics.totalBad;
                         const csatPct = csatTotal > 0 ? (metrics.totalGood / csatTotal) * 100 : 100;
-                        const karmaBase = metrics.totalGood + metrics.totalBad + metrics.karmaBad;
-                        const karmaPct = karmaBase > 0 ? (metrics.totalGood / karmaBase) * 100 : 100;
-                        const getColor = (pct: number) => pct >= 95 ? 'text-success stroke-success' : pct >= 88 ? 'text-primary stroke-primary' : 'text-warning stroke-warning';
+                        const kpiPct = metrics.kpiScore;
+                        const getColor = (pct: number) => pct >= 95 ? 'text-success stroke-success' : pct >= 75 ? 'text-primary stroke-primary' : 'text-warning stroke-warning';
                         const circumference = 2 * Math.PI * 8;
                         return [
                           { pct: csatPct, label: 'C' },
-                          { pct: karmaPct, label: 'K' },
+                          { pct: kpiPct, label: 'K' },
                         ].map((item, i) => (
                           <div key={i} className="relative w-9 h-9 flex items-center justify-center">
                             <svg width="36" height="36" viewBox="0 0 20 20" className="-rotate-90">
@@ -125,7 +123,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                   <TooltipContent side="right">
                     <div className="text-xs space-y-1">
                       <div>CSAT: {(() => { const t = metrics.totalGood + metrics.totalBad; return t > 0 ? ((metrics.totalGood / t) * 100).toFixed(1) : "100"; })()}%</div>
-                      <div>Karma: {(() => { const b = metrics.totalGood + metrics.totalBad + metrics.karmaBad; return b > 0 ? ((metrics.totalGood / b) * 100).toFixed(1) : "100"; })()}%</div>
+                      <div>KPI: {metrics.kpiScore.toFixed(0)}%</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -140,10 +138,10 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                   variant="sidebar"
                 />
                 <GoalsSection
-                  currentValue={metrics.totalGood}
-                  totalNegatives={metrics.totalBad + metrics.karmaBad}
-                  metricName="Karma"
-                  targets={[88, 90, 95]}
+                  currentValue={metrics.kpiScore}
+                  totalNegatives={100 - metrics.kpiScore}
+                  metricName="KPI"
+                  targets={[50, 75, 100]}
                   variant="sidebar"
                 />
               </div>
