@@ -1492,8 +1492,8 @@ const Index = () => {
 
             {/* Metrics Cards */}
             <div>
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">📊 Rating Metrics</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6 bg-gradient-primary bg-clip-text text-transparent">📊 Rating Metrics</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
                 <MetricCard
                   title="Good Ratings"
                   value={totalGood}
