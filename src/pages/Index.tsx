@@ -17,7 +17,7 @@ import { DailyTarget } from "@/components/DailyTarget";
 import { SmartRatingDialog } from "@/components/SmartRatingDialog";
 import { HoldTicketsSection } from "@/components/HoldTicketsSection";
 import { DailyNotesSection } from "@/components/DailyNotesSection";
-import { BreakScheduler } from "@/components/BreakScheduler";
+
 import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
 import SurveyConversion from "@/components/SurveyConversion";
@@ -1690,10 +1690,6 @@ const Index = () => {
 
           {activeTab === "notes" && (
           <div className="space-y-6 animate-fade-in focus-visible:outline-none">
-              <div className="space-y-4">
-                <h3 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Break Time ⏱️</h3>
-                <BreakScheduler />
-              </div>
               <DailyNotesSection performanceId={performanceId} />
           </div>
           )}
