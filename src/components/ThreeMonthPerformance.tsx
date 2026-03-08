@@ -1,8 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { ComposedChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid, Line } from "recharts";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { PercentageDisplay } from "@/components/PercentageDisplay";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface MonthMetrics {
   month: number;
@@ -22,6 +24,14 @@ export interface MonthMetrics {
   emailBad: number;
 }
 
+interface KpiData {
+  productivity: number;
+  absenceGate: number;
+  kpi: number;
+  avgCalls: number;
+  absenceDays: number;
+}
+
 interface ThreeMonthPerformanceProps {
   metrics: MonthMetrics[];
   availableMonths: Array<{ month: number; year: number; label: string }>;
@@ -29,7 +39,37 @@ interface ThreeMonthPerformanceProps {
   onMonthsChange: (months: Array<{ month: number; year: number }>) => void;
 }
 
-type MetricType = "csat" | "karma" | "fcr" | "phone";
+type MetricType = "csat" | "karma" | "fcr" | "phone" | "kpi" | "productivity" | "absence";
+
+const getProductivityScore = (avg: number) => {
+  if (avg >= 30) return 100;
+  if (avg >= 28) return 75;
+  if (avg >= 26) return 50;
+  return 0;
+};
+
+const getCsatScore = (csat: number) => {
+  if (csat >= 93) return 100;
+  if (csat >= 90) return 75;
+  if (csat >= 87) return 50;
+  return 0;
+};
+
+const getAbsenceGate = (days: number) => {
+  if (days <= 1) return 100;
+  if (days === 2) return 75;
+  return 0;
+};
+
+const metricLabels: Record<MetricType, string> = {
+  csat: "CSAT",
+  karma: "KARMA",
+  fcr: "FCR",
+  phone: "Phone Channel",
+  kpi: "KPI Score",
+  productivity: "Productivity",
+  absence: "Absence Gate",
+};
 
 export const ThreeMonthPerformance = ({
   metrics,
@@ -37,13 +77,69 @@ export const ThreeMonthPerformance = ({
   selectedMonths,
   onMonthsChange,
 }: ThreeMonthPerformanceProps) => {
+  const { user } = useAuth();
   const [selectedMetrics, setSelectedMetrics] = useState<MetricType[]>(["csat", "karma", "fcr", "phone"]);
+  const [kpiDataByMonth, setKpiDataByMonth] = useState<Record<string, KpiData>>({});
 
-  // Toggle a metric on/off
+  // Fetch KPI-related data for selected months
+  useEffect(() => {
+    if (!user) return;
+    const needsKpiData = selectedMetrics.some(m => ["kpi", "productivity", "absence"].includes(m));
+    if (!needsKpiData || metrics.length === 0) return;
+
+    const fetchKpiData = async () => {
+      const results: Record<string, KpiData> = {};
+
+      await Promise.all(metrics.map(async (m) => {
+        const key = `${m.year}-${m.month}`;
+        const startDate = `${m.year}-${String(m.month + 1).padStart(2, '0')}-01`;
+        const endMonth = m.month + 2 > 12 ? 1 : m.month + 2;
+        const endYear = m.month + 2 > 12 ? m.year + 1 : m.year;
+        const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+
+        // Fetch survey calls for productivity
+        const { data: callsData } = await supabase
+          .from('daily_survey_calls')
+          .select('total_calls')
+          .eq('user_id', user.id)
+          .gte('call_date', startDate)
+          .lt('call_date', endDate);
+
+        const validDays = (callsData || []).filter(c => c.total_calls > 0);
+        const totalCalls = validDays.reduce((sum, c) => sum + c.total_calls, 0);
+        const avgCalls = validDays.length > 0 ? totalCalls / validDays.length : 0;
+        const productivityScore = getProductivityScore(avgCalls);
+
+        // Fetch shifts for absence
+        const { data: shiftsData } = await supabase
+          .from('daily_shifts')
+          .select('is_off_day, absence_type')
+          .eq('user_id', user.id)
+          .gte('shift_date', startDate)
+          .lt('shift_date', endDate);
+
+        const absenceDays = (shiftsData || []).filter(s =>
+          s.is_off_day && (s.absence_type === 'sick_leave' || s.absence_type === 'unexcused')
+        ).length;
+        const absenceGate = getAbsenceGate(absenceDays);
+
+        // Calculate KPI
+        const csatScore = getCsatScore(m.csat);
+        const base = (productivityScore * 0.5) + (csatScore * 0.5);
+        const kpi = (base * absenceGate) / 100;
+
+        results[key] = { productivity: productivityScore, absenceGate, kpi, avgCalls, absenceDays };
+      }));
+
+      setKpiDataByMonth(results);
+    };
+
+    fetchKpiData();
+  }, [user, metrics, selectedMetrics]);
+
   const toggleMetric = (metric: MetricType) => {
     setSelectedMetrics((prev) => {
       if (prev.includes(metric)) {
-        // Don't allow removing all metrics
         if (prev.length === 1) return prev;
         return prev.filter((m) => m !== metric);
       }
@@ -51,18 +147,14 @@ export const ThreeMonthPerformance = ({
     });
   };
 
-  // Calculate Phone channel analytics per month (for chart)
   const phoneChannelData = useMemo(() => {
     return metrics.map((m) => {
       const monthName = new Date(m.year, m.month).toLocaleString("en-US", { month: "short" });
-      
       const good = m.phoneGood;
       const bad = m.phoneBad;
       const karma = m.phoneKarma;
-
       const denom = good + bad;
       const successRate = denom > 0 ? (good / denom) * 100 : 0;
-
       return {
         monthLabel: `${monthName} ${m.year}`,
         monthName,
@@ -75,15 +167,13 @@ export const ThreeMonthPerformance = ({
     });
   }, [metrics]);
 
-  // Toggle month selection
   const toggleMonth = (month: number, year: number) => {
     const exists = selectedMonths.some((s) => s.month === month && s.year === year);
     if (exists) {
-      // Don't allow removing last month
       if (selectedMonths.length === 1) return;
       onMonthsChange(selectedMonths.filter((s) => !(s.month === month && s.year === year)));
     } else {
-      onMonthsChange([...selectedMonths, { month, year }].slice(-6)); // Max 6 months
+      onMonthsChange([...selectedMonths, { month, year }].slice(-6));
     }
   };
 
@@ -95,6 +185,8 @@ export const ThreeMonthPerformance = ({
       </Card>
     );
   }
+
+  const allMetricTypes: MetricType[] = ["csat", "karma", "fcr", "phone", "kpi", "productivity", "absence"];
 
   return (
     <div className="space-y-6">
@@ -108,7 +200,7 @@ export const ThreeMonthPerformance = ({
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Metrics to Show</Label>
               <div className="flex flex-wrap gap-2">
-                {(["csat", "karma", "fcr", "phone"] as MetricType[]).map((m) => (
+                {allMetricTypes.map((m) => (
                   <button
                     key={m}
                     onClick={() => toggleMetric(m)}
@@ -118,7 +210,7 @@ export const ThreeMonthPerformance = ({
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
-                    {m === "phone" ? "Phone Channel" : m.toUpperCase()}
+                    {metricLabels[m]}
                   </button>
                 ))}
               </div>
@@ -154,10 +246,10 @@ export const ThreeMonthPerformance = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {metrics.map((m) => {
           const monthName = new Date(m.year, m.month).toLocaleString("en-US", { month: "long" });
-          
-          // Calculate Phone channel success rate: phoneGood / (phoneGood + phoneBad)
           const phoneTotal = m.phoneGood + m.phoneBad;
           const phoneSuccessRate = phoneTotal > 0 ? (m.phoneGood / phoneTotal) * 100 : 0;
+          const kpiKey = `${m.year}-${m.month}`;
+          const kpi = kpiDataByMonth[kpiKey];
 
           return (
             <Card key={`${m.year}-${m.month}`} className="p-4 border-border">
@@ -191,19 +283,38 @@ export const ThreeMonthPerformance = ({
                     subtitle={`${m.phoneGood} good / ${m.phoneBad} bad`}
                   />
                 )}
+                {selectedMetrics.includes("kpi") && (
+                  <PercentageDisplay
+                    title="KPI Score"
+                    percentage={kpi?.kpi ?? 0}
+                    subtitle={kpi ? `Prod ${kpi.productivity}% × CSAT ${getCsatScore(m.csat)}% × Abs ${kpi.absenceGate}%` : "Loading..."}
+                  />
+                )}
+                {selectedMetrics.includes("productivity") && (
+                  <PercentageDisplay
+                    title="Productivity"
+                    percentage={kpi?.productivity ?? 0}
+                    subtitle={kpi ? `${kpi.avgCalls.toFixed(1)} avg calls/day` : "Loading..."}
+                  />
+                )}
+                {selectedMetrics.includes("absence") && (
+                  <PercentageDisplay
+                    title="Absence Gate"
+                    percentage={kpi?.absenceGate ?? 0}
+                    subtitle={kpi ? `${kpi.absenceDays} absence day${kpi.absenceDays !== 1 ? 's' : ''}` : "Loading..."}
+                  />
+                )}
               </div>
             </Card>
           );
         })}
       </div>
 
-      {/* Phone Channel Analytics Chart - only show when phone metric is selected */}
+      {/* Phone Channel Analytics Chart */}
       {selectedMetrics.includes("phone") && (
         <Card className="p-6 border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">
-              Phone Channel Analytics
-            </h3>
+            <h3 className="text-lg font-semibold text-foreground">Phone Channel Analytics</h3>
             <span className="text-sm text-muted-foreground">
               {metrics.length} month{metrics.length > 1 ? "s" : ""} comparison
             </span>
