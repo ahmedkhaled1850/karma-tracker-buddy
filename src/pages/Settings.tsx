@@ -303,6 +303,53 @@ export default function Settings() {
                 </Card>
             </TabsContent>
 
+            <TabsContent value="salary">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Salary & KPI Settings</CardTitle>
+                        <CardDescription>Enter your base salary and tax rate to calculate your KPI bonus payout.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={onSalarySave} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Base Salary (Monthly)</Label>
+                                <Input
+                                    type="number"
+                                    value={baseSalary}
+                                    onChange={(e) => setBaseSalary(e.target.value)}
+                                    placeholder="e.g. 5000"
+                                    step="0.01"
+                                    min="0"
+                                />
+                                <p className="text-xs text-muted-foreground">Your gross monthly salary before deductions</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Tax Rate (%)</Label>
+                                <Input
+                                    type="number"
+                                    value={taxRate}
+                                    onChange={(e) => setTaxRate(e.target.value)}
+                                    placeholder="e.g. 14.5"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                />
+                                <p className="text-xs text-muted-foreground">Percentage deducted from your KPI bonus (taxes & insurance)</p>
+                            </div>
+                            <div className="bg-muted/50 p-4 rounded-lg space-y-1 text-sm">
+                                <p className="font-medium">How KPI Payout is Calculated:</p>
+                                <p className="text-muted-foreground">KPI Pool = Base Salary × 70%</p>
+                                <p className="text-muted-foreground">Gross Bonus = KPI Pool × Final KPI %</p>
+                                <p className="text-muted-foreground">Net Bonus = Gross Bonus × (1 - Tax Rate %)</p>
+                            </div>
+                            <Button type="submit" disabled={isSalarySaving}>
+                                <Save className="mr-2 h-4 w-4" /> {isSalarySaving ? "Saving..." : "Save Salary Settings"}
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
             <TabsContent value="security">
                 <Card>
                     <CardHeader>
