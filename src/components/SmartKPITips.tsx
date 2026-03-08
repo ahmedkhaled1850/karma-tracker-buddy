@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { Lightbulb, TrendingUp, Phone, SmilePlus, Target } from "lucide-react";
 
 interface SmartKPITipsProps {
