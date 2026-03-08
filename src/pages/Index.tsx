@@ -1101,7 +1101,7 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, data, genesysTickets]);
 
-  const _updateMetric = useCallback(
+  const updateMetric = useCallback(
     (field: keyof Pick<MonthlyData, "good" | "bad" | "karmaBad">, increment: boolean) => {
       setData((prev) => {
         // Special case: the UI shows totalGood (good + genesysGood), so decrement should affect
