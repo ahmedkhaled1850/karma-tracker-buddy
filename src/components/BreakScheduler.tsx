@@ -53,6 +53,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
   });
   const [nextCountdown, setNextCountdown] = useState<string>("");
   const [shiftStart, setShiftStart] = useState<string>("");
+  const [shiftEnd, setShiftEnd] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const initialLoadRef = useRef(true);
 
@@ -68,14 +69,22 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
     if (isNaN(h) || isNaN(m)) return null;
     const now = new Date();
     
+    // Calculate shift duration from actual end time or default 9h
+    const shiftDurationMs = shiftEnd ? (() => {
+      const [eh, em] = shiftEnd.split(":").map((x) => parseInt(x, 10));
+      let durationMin = (eh * 60 + em) - (h * 60 + m);
+      if (durationMin <= 0) durationMin += 24 * 60; // overnight shift
+      return durationMin * 60 * 1000;
+    })() : 9 * 3600 * 1000;
+    
     const startYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, h, m, 0, 0);
-    const endYesterday = new Date(startYesterday.getTime() + 9 * 3600 * 1000);
+    const endYesterday = new Date(startYesterday.getTime() + shiftDurationMs);
     if (now >= startYesterday && now <= endYesterday) {
         return startYesterday;
     }
 
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-    const endToday = new Date(startToday.getTime() + 9 * 3600 * 1000);
+    const endToday = new Date(startToday.getTime() + shiftDurationMs);
     if (now >= startToday && now <= endToday) {
         return startToday;
     }
@@ -86,13 +95,23 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
     
     const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0, 0);
     return startTomorrow;
-  }, [shiftStart, nextCountdown]);
+  }, [shiftStart, shiftEnd, nextCountdown]);
   
   
   const shiftEndDate = useMemo(() => {
     if (!shiftStartDate) return null;
+    if (shiftEnd) {
+      const [eh, em] = shiftEnd.split(":").map((x) => parseInt(x, 10));
+      const endDate = new Date(shiftStartDate);
+      endDate.setHours(eh, em, 0, 0);
+      // If end is before start, it's next day
+      if (endDate.getTime() <= shiftStartDate.getTime()) {
+        endDate.setDate(endDate.getDate() + 1);
+      }
+      return endDate;
+    }
     return new Date(shiftStartDate.getTime() + 9 * 3600 * 1000);
-  }, [shiftStartDate]);
+  }, [shiftStartDate, shiftEnd]);
   
   const shiftTimeoutsRef = useRef<number[]>([]);
 
@@ -117,6 +136,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
           break2: globalSettings?.break2_time || "14:00",
           break3: globalSettings?.break3_time || "17:00",
         };
+        let todayShiftEnd = "";
 
         // Check daily_shifts for today
         const todayStr = new Date().toISOString().split("T")[0];
@@ -130,6 +150,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
         if (dailyShift) {
           const ds = dailyShift as unknown as DailyShift;
           if (ds.shift_start) todayShiftStart = ds.shift_start;
+          if (ds.shift_end) todayShiftEnd = ds.shift_end;
           // Use daily shift values directly — empty/null means no break scheduled
           todayBreaks.break1 = ds.break1_time || "";
           todayBreaks.break2 = ds.break2_time || "";
@@ -139,6 +160,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
           const staticShift = getStaticShift(todayStr);
           if (staticShift && !staticShift.is_off_day) {
             if (staticShift.shift_start) todayShiftStart = staticShift.shift_start;
+            if (staticShift.shift_end) todayShiftEnd = staticShift.shift_end;
             if (staticShift.break1_time) todayBreaks.break1 = staticShift.break1_time;
             if (staticShift.break2_time) todayBreaks.break2 = staticShift.break2_time;
             if (staticShift.break3_time) todayBreaks.break3 = staticShift.break3_time;
@@ -146,6 +168,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
         }
 
         setShiftStart(todayShiftStart);
+        setShiftEnd(todayShiftEnd);
         setSchedule(todayBreaks);
       } catch (error) {
         console.error("Error loading break settings:", error);
@@ -612,7 +635,9 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
               </div>
               <div className="flex-1 text-center">
                 <div className="h-px bg-border relative">
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground bg-card px-1.5">9h</span>
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground bg-card px-1.5">
+                    {shiftStartDate && shiftEndDate ? `${((shiftEndDate.getTime() - shiftStartDate.getTime()) / 3600000).toFixed(1).replace('.0', '')}h` : '9h'}
+                  </span>
                 </div>
               </div>
               <div className="flex-1 text-right">
