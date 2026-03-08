@@ -670,6 +670,17 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
                           </span>
                         </div>
                       )}
+                      {isScheduled && !isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-1.5 h-6 px-2 text-[10px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                          onClick={(e) => { e.stopPropagation(); openLateBreakDialog(key); }}
+                        >
+                          <Clock className="h-3 w-3 mr-0.5" />
+                          Late
+                        </Button>
+                      )}
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground/50">—</p>
