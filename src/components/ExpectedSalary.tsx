@@ -6,12 +6,10 @@ import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award } from "lucide-react";
 
 interface ExpectedSalaryProps {
   userId: string;
-  selectedMonth: number;
-  selectedYear: number;
   kpiScore: number;
 }
 
-export const ExpectedSalary = ({ userId, selectedMonth, selectedYear, kpiScore }: ExpectedSalaryProps) => {
+export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
   const [settings, setSettings] = useState<{
     baseSalary: number | null;
     taxRate: number | null;
