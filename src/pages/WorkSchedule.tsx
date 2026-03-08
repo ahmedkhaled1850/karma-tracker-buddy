@@ -2,14 +2,12 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { MonthSelector } from "@/components/MonthSelector";
-import { WorkScheduleSettings } from "@/components/WorkScheduleSettings";
 import { DailyShiftSchedule } from "@/components/DailyShiftSchedule";
 import { ExpectedSalary } from "@/components/ExpectedSalary";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, CalendarOff, Clock, Briefcase, ShieldAlert } from "lucide-react";
+import { CalendarOff, Briefcase, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -190,7 +188,6 @@ export default function WorkSchedule() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Absence Gate */}
         <Card className={`p-4 border-l-4 ${absenceGateScore === 100 ? 'border-l-success' : absenceGateScore === 75 ? 'border-l-warning' : 'border-l-destructive'}`}>
           <div className="flex items-center gap-2 mb-1">
             <ShieldAlert className="h-4 w-4 text-muted-foreground" />
@@ -200,39 +197,25 @@ export default function WorkSchedule() {
             {absenceGateScore}%
           </p>
         </Card>
-
-        {/* Sick Days */}
         <Card className="p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">🤒 Sick</span>
-          </div>
+          <span className="text-[11px] text-muted-foreground uppercase tracking-wider">🤒 Sick</span>
           <p className="text-2xl font-bold font-mono text-foreground">{absenceStats.sick}</p>
           <p className="text-[10px] text-muted-foreground">days this month</p>
         </Card>
-
-        {/* Unexcused */}
         <Card className="p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">❌ Unexcused</span>
-          </div>
+          <span className="text-[11px] text-muted-foreground uppercase tracking-wider">❌ Unexcused</span>
           <p className={`text-2xl font-bold font-mono ${absenceStats.unexcused > 0 ? 'text-destructive' : 'text-foreground'}`}>{absenceStats.unexcused}</p>
           <p className="text-[10px] text-muted-foreground">days this month</p>
         </Card>
-
-        {/* Scheduled Off */}
         <Card className="p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">📅 Scheduled</span>
-          </div>
+          <span className="text-[11px] text-muted-foreground uppercase tracking-wider">📅 Scheduled</span>
           <p className="text-2xl font-bold font-mono text-foreground">{absenceStats.scheduled}</p>
           <p className="text-[10px] text-muted-foreground">no KPI impact</p>
         </Card>
       </div>
 
       {/* Expected Salary */}
-      {user?.id && (
-        <ExpectedSalary userId={user.id} kpiScore={kpiScore} />
-      )}
+      {user?.id && <ExpectedSalary userId={user.id} kpiScore={kpiScore} />}
 
       {/* Month Selector */}
       <MonthSelector
@@ -242,36 +225,14 @@ export default function WorkSchedule() {
         onYearChange={setSelectedYear}
       />
 
-      {/* Tabs */}
-      <Tabs defaultValue="daily" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="daily" className="gap-2">
-            <Clock className="h-4 w-4" />
-            Daily Shifts
-          </TabsTrigger>
-          <TabsTrigger value="offdays" className="gap-2">
-            <Calendar className="h-4 w-4" />
-            Off Days Calendar
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="daily" className="mt-4">
-          <DailyShiftSchedule
-            key={refreshKey}
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-          />
-        </TabsContent>
-        
-        <TabsContent value="offdays" className="mt-4">
-          <WorkScheduleSettings
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            performanceId={performanceId}
-            onScheduleSave={() => toast.success("Work schedule updated")}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Unified Daily Shift Schedule */}
+      <DailyShiftSchedule
+        key={refreshKey}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        performanceId={performanceId}
+        onShiftChanged={() => setRefreshKey(k => k + 1)}
+      />
 
       {/* Record Absence Dialog */}
       <Dialog open={absenceDialogOpen} onOpenChange={setAbsenceDialogOpen}>
@@ -285,18 +246,12 @@ export default function WorkSchedule() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Date</Label>
-              <Input
-                type="date"
-                value={absenceDate}
-                onChange={(e) => setAbsenceDate(e.target.value)}
-              />
+              <Input type="date" value={absenceDate} onChange={(e) => setAbsenceDate(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Absence Type</Label>
               <Select value={absenceType} onValueChange={setAbsenceType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sick_leave">🤒 Sick Leave</SelectItem>
                   <SelectItem value="unexcused">❌ Unexcused Absence</SelectItem>
@@ -311,18 +266,11 @@ export default function WorkSchedule() {
             </div>
             <div className="space-y-2">
               <Label>Notes (optional)</Label>
-              <Textarea
-                value={absenceNotes}
-                onChange={(e) => setAbsenceNotes(e.target.value)}
-                placeholder="Reason for absence..."
-                rows={2}
-              />
+              <Textarea value={absenceNotes} onChange={(e) => setAbsenceNotes(e.target.value)} placeholder="Reason for absence..." rows={2} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleRecordAbsence} disabled={absenceSaving}>
               {absenceSaving ? "Saving..." : "Record Absence"}
             </Button>
