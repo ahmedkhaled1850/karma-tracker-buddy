@@ -222,13 +222,13 @@ export const MonthEndForecast = ({
     }
 
     if (histAvgKarma !== null && forecastKarma > histAvgKarma + 2) {
-      insights.push({ icon: 'up', text: `متوقع تتجاوز متوسط الكارما التاريخي (${histAvgKarma.toFixed(1)}%)`, type: 'success' });
+      insights.push({ icon: 'up', text: `On track to beat your historical Karma avg (${histAvgKarma.toFixed(1)}%)`, type: 'success' });
     } else if (histAvgKarma !== null && forecastKarma < histAvgKarma - 2) {
-      insights.push({ icon: 'down', text: `التوقع أقل من متوسطك التاريخي (${histAvgKarma.toFixed(1)}%) - لسه وقت تتحسن`, type: 'warning' });
+      insights.push({ icon: 'down', text: `Forecast below your historical avg (${histAvgKarma.toFixed(1)}%) — still time to improve`, type: 'warning' });
     }
 
     if (bestMonth && forecastKarma > bestMonth.karma) {
-      insights.push({ icon: 'zap', text: `ممكن يبقى أفضل شهر ليك! أحسن شهر سابق: ${bestMonth.label} (${bestMonth.karma.toFixed(1)}%)`, type: 'success' });
+      insights.push({ icon: 'zap', text: `Could be your best month ever! Previous best: ${bestMonth.label} (${bestMonth.karma.toFixed(1)}%)`, type: 'success' });
     }
 
     let confidence: 'low' | 'medium' | 'high' = 'low';
