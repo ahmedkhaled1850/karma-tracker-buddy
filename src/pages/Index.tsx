@@ -1101,6 +1101,7 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, data, genesysTickets]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const updateMetric = useCallback(
     (field: keyof Pick<MonthlyData, "good" | "bad" | "karmaBad">, increment: boolean) => {
       setData((prev) => {
