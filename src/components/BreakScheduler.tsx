@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Bell, TimerReset, AlarmClockCheck, Loader2 } from "lucide-react";
+import { Bell, TimerReset, AlarmClockCheck, Loader2, Clock } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { getStaticShift, formatTime12H } from "@/lib/staticSchedule";
 import { DailyShift } from "@/lib/types";
 
@@ -22,8 +27,13 @@ const BREAK_LABELS: Record<BreakKey, string> = {
   break3: "Third Break",
 };
 
-export const BreakScheduler = () => {
+interface BreakSchedulerProps {
+  performanceId?: string | null;
+}
+
+export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [schedule, setSchedule] = useState<Record<BreakKey, string>>({
     break1: "11:00",
     break2: "14:00",
