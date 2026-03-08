@@ -1382,13 +1382,30 @@ const Index = () => {
     { phone: 0, chat: 0, email: 0 }
   ), [data.tickets]);
  
+  // KPI score state (from PhoneBonusKPI calculation)
+  const [kpiScore, setKpiScore] = useState(0);
+
+  // Listen for KPI score broadcasts
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<number>;
+      if (typeof ce.detail === 'number') setKpiScore(ce.detail);
+    };
+    window.addEventListener("ktb_kpi_score", handler as EventListener);
+    try {
+      const stored = localStorage.getItem("ktb_kpi_score");
+      if (stored) setKpiScore(parseFloat(stored));
+    } catch {}
+    return () => window.removeEventListener("ktb_kpi_score", handler as EventListener);
+  }, []);
+
   useEffect(() => {
     try {
-      const detail = { totalGood, totalBad, karmaBad: data.karmaBad };
+      const detail = { totalGood, totalBad, karmaBad: data.karmaBad, kpiScore };
       window.dispatchEvent(new CustomEvent("ktb_metrics_update", { detail }));
       localStorage.setItem("ktb_metrics_update", JSON.stringify(detail));
     } catch {}
-  }, [totalGood, totalBad, data.karmaBad]);
+  }, [totalGood, totalBad, data.karmaBad, kpiScore]);
 
   // Next event from BreakScheduler for daily summary
   const [nextEvent, setNextEvent] = useState<{ countdown: string; label: string }>({ countdown: "", label: "" });
@@ -1524,7 +1541,7 @@ const Index = () => {
               shiftLabel={nextEvent.label}
             />
 
-            {/* Hero Section: CSAT & Karma side by side */}
+            {/* Hero Section: CSAT & KPI side by side */}
             <div className="grid grid-cols-2 gap-3">
               <PercentageDisplay
                 title="CSAT"
@@ -1532,9 +1549,9 @@ const Index = () => {
                 subtitle={`${totalGood} / ${totalSurveys}`}
               />
               <PercentageDisplay
-                title="Karma"
-                percentage={karma}
-                subtitle={`${totalGood} / ${totalKarmaBase}`}
+                title="KPI"
+                percentage={kpiScore}
+                subtitle="Phone Bonus"
               />
             </div>
 
