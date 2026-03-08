@@ -78,6 +78,7 @@ const Index = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [performanceId, setPerformanceId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
   const [focusMode, setFocusMode] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window !== "undefined") {
