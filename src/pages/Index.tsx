@@ -1541,52 +1541,65 @@ const Index = () => {
               shiftLabel={nextEvent.label}
             />
 
-            {/* Hero Section: CSAT & KPI side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              <PercentageDisplay
-                title="CSAT"
-                percentage={csat}
-                subtitle={`${totalGood} / ${totalSurveys}`}
-              />
-              <PercentageDisplay
-                title="KPI"
-                percentage={kpiScore}
-                subtitle="Phone Bonus"
-              />
-            </div>
+            {/* Hero: KPI (primary focus) */}
+            <PercentageDisplay
+              title="KPI"
+              percentage={kpiScore}
+              subtitle="Phone Bonus — Main Target 🎯"
+            />
 
-            {/* Metric Counters - Always visible even in focus mode */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <MetricCard
-                title="Good"
-                value={totalGood}
-                onIncrement={() => updateMetric("good", true)}
-                onDecrement={() => updateMetric("good", false)}
-                color="success"
-                icon={ThumbsUp}
-              />
-              <MetricCard
-                title="DSAT"
-                value={totalBad}
-                onIncrement={() => updateMetric("bad", true)}
-                onDecrement={() => updateMetric("bad", false)}
-                color="destructive"
-                icon={ThumbsDown}
-              />
-              <MetricCard
-                title="Karma Bad"
-                value={data.karmaBad}
-                onIncrement={() => updateMetric("karmaBad", true)}
-                onDecrement={() => updateMetric("karmaBad", false)}
-                color="warning"
-                icon={AlertTriangle}
-              />
+            {/* Survey Conversion - Secondary priority, always visible */}
+            <SurveyConversion
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+            />
+
+            {/* CSAT circle - supporting metric */}
+            <PercentageDisplay
+              title="CSAT"
+              percentage={csat}
+              subtitle={`${totalGood} / ${totalSurveys}`}
+            />
+
+            {/* Monitoring Section: Counters as compact row */}
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                Monitoring
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                <MetricCard
+                  title="Good"
+                  value={totalGood}
+                  onIncrement={() => updateMetric("good", true)}
+                  onDecrement={() => updateMetric("good", false)}
+                  color="success"
+                  icon={ThumbsUp}
+                />
+                <MetricCard
+                  title="DSAT"
+                  value={totalBad}
+                  onIncrement={() => updateMetric("bad", true)}
+                  onDecrement={() => updateMetric("bad", false)}
+                  color="destructive"
+                  icon={ThumbsDown}
+                />
+                <MetricCard
+                  title="Karma"
+                  value={data.karmaBad}
+                  onIncrement={() => updateMetric("karmaBad", true)}
+                  onDecrement={() => updateMetric("karmaBad", false)}
+                  color="warning"
+                  icon={AlertTriangle}
+                />
+              </div>
             </div>
 
             {/* Below here hidden in Focus Mode */}
             {!focusMode && (
               <>
-                {/* Daily Target - Full detail */}
+                {/* Daily Target */}
                 <DailyTarget
                   currentGood={totalGood}
                   totalNegatives={totalBad}
@@ -1596,14 +1609,6 @@ const Index = () => {
                   todayGood={todayStats.good}
                   todayBad={todayStats.bad}
                   remainingWorkingDays={remainingWorkingDays}
-                />
-
-
-                {/* Survey Conversion */}
-                <SurveyConversion
-                  userId={user.id}
-                  selectedMonth={selectedMonth}
-                  selectedYear={selectedYear}
                 />
               </>
             )}
