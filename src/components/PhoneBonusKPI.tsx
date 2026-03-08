@@ -103,13 +103,14 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
         // Load salary settings
         const { data: settings } = await supabase
           .from('user_settings')
-          .select('base_salary, tax_rate')
+          .select('base_salary, tax_rate, kpi_percentage')
           .eq('user_id', userId)
           .maybeSingle();
 
         if (settings) {
           setBaseSalary((settings as any).base_salary ?? null);
           setTaxRate((settings as any).tax_rate ?? null);
+          setKpiPercentage((settings as any).kpi_percentage ?? 70);
         }
       } catch (error) {
         console.error('Error loading KPI data:', error);
