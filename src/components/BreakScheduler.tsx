@@ -297,6 +297,31 @@ export const BreakScheduler = () => {
     return () => window.clearInterval(id);
   }, [activeBreak, nextUp, shiftStartDate, shiftEndDate]);
 
+  // Broadcast next event info to header
+  useEffect(() => {
+    const getNextEventLabel = () => {
+      if (activeBreak) return BREAK_LABELS[activeBreak];
+      if (!shiftStartDate || !shiftEndDate) {
+        return nextUp ? BREAK_LABELS[nextUp.key] : "";
+      }
+      const now = Date.now();
+      if (now < shiftStartDate.getTime()) return "Shift Start";
+      if (now <= shiftEndDate.getTime()) {
+        return nextUp ? BREAK_LABELS[nextUp.key] : "Shift End";
+      }
+      return "Next Shift";
+    };
+
+    const countdown = activeBreak ? formatTimeLeft(timeLeft) : nextCountdown;
+    const label = getNextEventLabel();
+    const detail = { countdown, label };
+    
+    try {
+      localStorage.setItem("ktb_next_event", JSON.stringify(detail));
+      window.dispatchEvent(new CustomEvent("ktb_next_event", { detail }));
+    } catch {}
+  }, [nextCountdown, activeBreak, timeLeft, nextUp, shiftStartDate, shiftEndDate]);
+
   // Schedule auto-start for breaks
   useEffect(() => {
     if (!loading && !initialLoadRef.current) {
@@ -564,81 +589,47 @@ export const BreakScheduler = () => {
         </div>
       </Card>
 
-      <Card className="p-6 border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TimerReset className="h-5 w-5 text-primary" />
-            <span className="font-medium">Current Break</span>
-          </div>
-          <span className="text-sm text-muted-foreground">
-            {shiftStartDate && shiftEndDate ? (
-              Date.now() < shiftStartDate.getTime() ? `Next shift at ${formatClock(shiftStartDate)}` :
-              Date.now() <= shiftEndDate.getTime() ? (
-                nextUp ? `Next: ${BREAK_LABELS[nextUp.key]} at ${formatClock(nextUp.start)}` :
-                `Shift ends at ${formatClock(shiftEndDate)}`
-              ) : `Next shift at ${formatClock(new Date(shiftStartDate.getTime() + 24 * 3600 * 1000))}`
-            ) : (
-              nextUp ? `Next: ${BREAK_LABELS[nextUp.key]} at ${formatClock(nextUp.start)}` : ""
-            )}
-          </span>
-        </div>
-        
-        {/* Large circular timer display */}
-        <div className="flex justify-center py-6">
-          <div className="relative w-48 h-48 rounded-full border-4 border-primary/20 flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
-            <div className="absolute inset-2 rounded-full border-2 border-primary/30" />
-            <div className="text-center">
-              <div className="text-4xl font-mono font-bold text-foreground">
-                {activeBreak
-                  ? formatTimeLeft(timeLeft)
-                  : nextCountdown || "00:00:00"}
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                {activeBreak
-                  ? BREAK_LABELS[activeBreak]
-                  : shiftStartDate && shiftEndDate
-                    ? (Date.now() < shiftStartDate.getTime()
-                        ? "Until shift starts"
-                        : (Date.now() <= shiftEndDate.getTime()
-                            ? (nextUp ? "Until next break" : "Until shift ends")
-                            : "No active shift"))
-                    : (nextUp ? "Until next break" : "")}
-              </div>
+      {activeBreak && (
+        <Card className="p-4 border-border bg-card">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TimerReset className="h-5 w-5 text-primary" />
+              <span className="font-medium">{BREAK_LABELS[activeBreak]}</span>
+              <span className="text-lg font-mono font-bold">{formatTimeLeft(timeLeft)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  stopCountdown();
+                  notify("Break Paused", "Timer paused");
+                }}
+              >
+                Pause
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const end = Date.now();
+                  if (currentStart && currentBreakKey) {
+                    const durationSec = Math.round((end - currentStart) / 1000);
+                    setBreakLog((prev) => [...prev, { key: currentBreakKey, start: currentStart, end, durationSec }]);
+                    notify("Break Ended", `Duration: ${formatTimeLeft(durationSec)}`);
+                  }
+                  setActiveBreak(null);
+                  setCurrentStart(null);
+                  setCurrentBreakKey(null);
+                  localStorage.removeItem("ktb_active_break");
+                }}
+              >
+                End Break
+              </Button>
             </div>
           </div>
-        </div>
-
-        {activeBreak && (
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                stopCountdown();
-                notify("Break Paused", "Timer paused");
-              }}
-            >
-              Pause
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const end = Date.now();
-                if (currentStart && currentBreakKey) {
-                  const durationSec = Math.round((end - currentStart) / 1000);
-                  setBreakLog((prev) => [...prev, { key: currentBreakKey, start: currentStart, end, durationSec }]);
-                  notify("Break Ended", `Duration: ${formatTimeLeft(durationSec)}`);
-                }
-                setActiveBreak(null);
-                setCurrentStart(null);
-                setCurrentBreakKey(null);
-                localStorage.removeItem("ktb_active_break");
-              }}
-            >
-              End Break
-            </Button>
-          </div>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 };

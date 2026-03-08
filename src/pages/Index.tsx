@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, ThumbsUp, ThumbsDown, AlertTriangle, LogOut } from "lucide-react";
+import { Download, ThumbsUp, ThumbsDown, AlertTriangle, LogOut, Clock } from "lucide-react";
 import { toast } from "sonner";
  
 import { MetricCard } from "@/components/MetricCard";
@@ -135,6 +135,21 @@ const Index = () => {
   const [monthlyChangeLog, setMonthlyChangeLog] = useState<any[]>([]);
   const [shiftStartTime, setShiftStartTime] = useState<string | null>(null);
   const [hasRestored, setHasRestored] = useState(false);
+  const [nextEvent, setNextEvent] = useState<{ countdown: string; label: string }>({ countdown: "", label: "" });
+
+  // Listen for next event broadcasts from BreakScheduler
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ countdown: string; label: string }>;
+      if (ce.detail) setNextEvent(ce.detail);
+    };
+    window.addEventListener("ktb_next_event", handler as EventListener);
+    try {
+      const stored = localStorage.getItem("ktb_next_event");
+      if (stored) setNextEvent(JSON.parse(stored));
+    } catch {}
+    return () => window.removeEventListener("ktb_next_event", handler as EventListener);
+  }, []);
   const [selectedThreeMonths, setSelectedThreeMonths] = useState<Array<{ month: number; year: number }>>(() => {
     const now = new Date();
     const m = now.getMonth();
@@ -1441,6 +1456,13 @@ const Index = () => {
               <p className="text-base text-muted-foreground">The big brother who will care for you at work and help you</p>
             </div>
             <div className="flex items-center gap-3">
+              {nextEvent.countdown && nextEvent.label && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">{nextEvent.label}</span>
+                  <span className="text-sm font-mono font-bold text-primary">{nextEvent.countdown}</span>
+                </div>
+              )}
               {isSaving && (
                 <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
               )}
