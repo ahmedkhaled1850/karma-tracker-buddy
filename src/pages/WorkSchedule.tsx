@@ -217,6 +217,11 @@ export default function WorkSchedule() {
         </div>
       </Card>
 
+      {/* Expected Salary */}
+      {user?.id && (
+        <ExpectedSalary userId={user.id} kpiScore={kpiScore} />
+      )}
+
       <div className="space-y-6">
         <MonthSelector
           selectedMonth={selectedMonth}
