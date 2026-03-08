@@ -7,7 +7,7 @@ import { DailyShiftSchedule } from "@/components/DailyShiftSchedule";
 import { ExpectedSalary } from "@/components/ExpectedSalary";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, CalendarOff } from "lucide-react";
+import { Calendar, CalendarOff, Clock, Briefcase, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 
 export default function WorkSchedule() {
   const { user } = useAuth();
@@ -31,9 +30,7 @@ export default function WorkSchedule() {
   const [absenceNotes, setAbsenceNotes] = useState("");
   const [absenceSaving, setAbsenceSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-
-  // Absence summary for the month
-  const [absenceStats, setAbsenceStats] = useState({ sick: 0, unexcused: 0 });
+  const [absenceStats, setAbsenceStats] = useState({ sick: 0, unexcused: 0, scheduled: 0 });
 
   useEffect(() => {
     const loadPerformance = async () => {
@@ -55,7 +52,6 @@ export default function WorkSchedule() {
     loadPerformance();
   }, [user?.id, selectedMonth, selectedYear]);
 
-  // Load absence stats
   useEffect(() => {
     const loadAbsenceStats = async () => {
       if (!user?.id) return;
@@ -73,7 +69,8 @@ export default function WorkSchedule() {
 
       const sick = (data || []).filter(d => d.absence_type === 'sick_leave').length;
       const unexcused = (data || []).filter(d => d.absence_type === 'unexcused').length;
-      setAbsenceStats({ sick, unexcused });
+      const scheduled = (data || []).filter(d => d.absence_type === 'scheduled_off').length;
+      setAbsenceStats({ sick, unexcused, scheduled });
     };
     loadAbsenceStats();
   }, [user?.id, selectedMonth, selectedYear, refreshKey]);
@@ -82,7 +79,6 @@ export default function WorkSchedule() {
     if (!user?.id) return;
     setAbsenceSaving(true);
     try {
-      // Check if shift already exists for this date
       const { data: existing } = await supabase
         .from('daily_shifts')
         .select('id')
@@ -109,13 +105,13 @@ export default function WorkSchedule() {
         await supabase.from('daily_shifts').insert(shiftData);
       }
 
-      toast.success("تم تسجيل الغياب بنجاح");
+      toast.success("Absence recorded successfully");
       setAbsenceDialogOpen(false);
       setAbsenceNotes("");
       setRefreshKey(k => k + 1);
     } catch (error) {
       console.error(error);
-      toast.error("فشل في تسجيل الغياب");
+      toast.error("Failed to record absence");
     } finally {
       setAbsenceSaving(false);
     }
@@ -124,8 +120,6 @@ export default function WorkSchedule() {
   const totalAbsence = absenceStats.sick + absenceStats.unexcused;
   const absenceGateScore = totalAbsence <= 1 ? 100 : totalAbsence === 2 ? 75 : 0;
 
-  // Calculate KPI score for salary estimation
-  // We need productivity and CSAT data
   const [kpiScore, setKpiScore] = useState(0);
 
   useEffect(() => {
@@ -135,7 +129,6 @@ export default function WorkSchedule() {
       const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
       const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${lastDay}`;
 
-      // Productivity
       const { data: callsData } = await supabase
         .from('daily_survey_calls')
         .select('total_calls')
@@ -148,7 +141,6 @@ export default function WorkSchedule() {
       const avg = validDays.length > 0 ? totalCalls / validDays.length : 0;
       const prodScore = avg >= 30 ? 100 : avg >= 28 ? 75 : avg >= 26 ? 50 : 0;
 
-      // CSAT from performance_data
       const { data: perfData } = await supabase
         .from('performance_data')
         .select('good, bad, genesys_good, genesys_bad')
@@ -157,7 +149,7 @@ export default function WorkSchedule() {
         .eq('month', selectedMonth)
         .maybeSingle();
 
-      let csatScore = 100; // default if no surveys
+      let csatScore = 100;
       if (perfData) {
         const totalGood = (perfData.good || 0) + (perfData.genesys_good || 0);
         const totalBad = (perfData.bad || 0) + (perfData.genesys_bad || 0);
@@ -168,92 +160,118 @@ export default function WorkSchedule() {
         }
       }
 
-      // Absence gate
       const gate = totalAbsence <= 1 ? 100 : totalAbsence === 2 ? 75 : 0;
-
       const final = ((prodScore * 0.5 + csatScore * 0.5) * gate) / 100;
       setKpiScore(final);
     };
     loadKpi();
   }, [user?.id, selectedMonth, selectedYear, totalAbsence]);
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
-      <Card className="p-6 bg-card border-border">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <h1 className="text-2xl font-bold">Work Schedule</h1>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Manage your monthly off days and daily shift schedules.
-            </p>
-          </div>
-          <Button onClick={() => setAbsenceDialogOpen(true)} variant="destructive" size="sm" className="gap-2">
-            <CalendarOff className="h-4 w-4" />
-            Record Absence
-          </Button>
-        </div>
+  const monthName = new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-        {/* Absence Gate Summary */}
-        <div className="mt-4 flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
-          <div className="flex items-center gap-2">
-            <CalendarOff className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Absence Gate:</span>
-          </div>
-          <Badge variant={absenceGateScore === 100 ? "default" : absenceGateScore === 75 ? "secondary" : "destructive"}>
-            {absenceGateScore}%
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            ({totalAbsence} absence day{totalAbsence !== 1 ? 's' : ''})
-          </span>
-          {absenceStats.sick > 0 && (
-            <Badge variant="secondary" className="text-xs">{absenceStats.sick} Sick</Badge>
-          )}
-          {absenceStats.unexcused > 0 && (
-            <Badge variant="destructive" className="text-xs">{absenceStats.unexcused} Unexcused</Badge>
-          )}
+  return (
+    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Briefcase className="h-6 w-6 text-primary" />
+            Work Schedule
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage shifts, off days & absences for <span className="font-medium text-foreground">{monthName}</span>
+          </p>
         </div>
-      </Card>
+        <Button onClick={() => setAbsenceDialogOpen(true)} variant="destructive" size="sm" className="gap-2 self-start">
+          <CalendarOff className="h-4 w-4" />
+          Record Absence
+        </Button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Absence Gate */}
+        <Card className={`p-4 border-l-4 ${absenceGateScore === 100 ? 'border-l-success' : absenceGateScore === 75 ? 'border-l-warning' : 'border-l-destructive'}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Absence Gate</span>
+          </div>
+          <p className={`text-2xl font-bold font-mono ${absenceGateScore === 100 ? 'text-success' : absenceGateScore === 75 ? 'text-warning' : 'text-destructive'}`}>
+            {absenceGateScore}%
+          </p>
+        </Card>
+
+        {/* Sick Days */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">🤒 Sick</span>
+          </div>
+          <p className="text-2xl font-bold font-mono text-foreground">{absenceStats.sick}</p>
+          <p className="text-[10px] text-muted-foreground">days this month</p>
+        </Card>
+
+        {/* Unexcused */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">❌ Unexcused</span>
+          </div>
+          <p className={`text-2xl font-bold font-mono ${absenceStats.unexcused > 0 ? 'text-destructive' : 'text-foreground'}`}>{absenceStats.unexcused}</p>
+          <p className="text-[10px] text-muted-foreground">days this month</p>
+        </Card>
+
+        {/* Scheduled Off */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">📅 Scheduled</span>
+          </div>
+          <p className="text-2xl font-bold font-mono text-foreground">{absenceStats.scheduled}</p>
+          <p className="text-[10px] text-muted-foreground">no KPI impact</p>
+        </Card>
+      </div>
 
       {/* Expected Salary */}
       {user?.id && (
         <ExpectedSalary userId={user.id} kpiScore={kpiScore} />
       )}
 
-      <div className="space-y-6">
-        <MonthSelector
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          onMonthChange={setSelectedMonth}
-          onYearChange={setSelectedYear}
-        />
+      {/* Month Selector */}
+      <MonthSelector
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        onMonthChange={setSelectedMonth}
+        onYearChange={setSelectedYear}
+      />
 
-        <Tabs defaultValue="daily" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="daily">Daily Shift Schedule</TabsTrigger>
-            <TabsTrigger value="offdays">Off Days Calendar</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="daily" className="mt-4">
-            <DailyShiftSchedule
-              key={refreshKey}
-              selectedMonth={selectedMonth}
-              selectedYear={selectedYear}
-            />
-          </TabsContent>
-          
-          <TabsContent value="offdays" className="mt-4">
-            <WorkScheduleSettings
-              selectedMonth={selectedMonth}
-              selectedYear={selectedYear}
-              performanceId={performanceId}
-              onScheduleSave={() => toast.success("Work schedule updated")}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
+      {/* Tabs */}
+      <Tabs defaultValue="daily" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="daily" className="gap-2">
+            <Clock className="h-4 w-4" />
+            Daily Shifts
+          </TabsTrigger>
+          <TabsTrigger value="offdays" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Off Days Calendar
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="daily" className="mt-4">
+          <DailyShiftSchedule
+            key={refreshKey}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+          />
+        </TabsContent>
+        
+        <TabsContent value="offdays" className="mt-4">
+          <WorkScheduleSettings
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            performanceId={performanceId}
+            onScheduleSave={() => toast.success("Work schedule updated")}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Record Absence Dialog */}
       <Dialog open={absenceDialogOpen} onOpenChange={setAbsenceDialogOpen}>
@@ -261,12 +279,12 @@ export default function WorkSchedule() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarOff className="h-5 w-5 text-destructive" />
-              تسجيل يوم غياب
+              Record Absence
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>التاريخ</Label>
+              <Label>Date</Label>
               <Input
                 type="date"
                 value={absenceDate}
@@ -274,39 +292,39 @@ export default function WorkSchedule() {
               />
             </div>
             <div className="space-y-2">
-              <Label>نوع الغياب</Label>
+              <Label>Absence Type</Label>
               <Select value={absenceType} onValueChange={setAbsenceType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sick_leave">🤒 إجازة مرضية (Sick Leave)</SelectItem>
-                  <SelectItem value="unexcused">❌ غياب بدون عذر (Unexcused)</SelectItem>
-                  <SelectItem value="scheduled_off">📅 إجازة مطلوبة (Requested Leave)</SelectItem>
+                  <SelectItem value="sick_leave">🤒 Sick Leave</SelectItem>
+                  <SelectItem value="unexcused">❌ Unexcused Absence</SelectItem>
+                  <SelectItem value="scheduled_off">📅 Requested Leave</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
                 {absenceType === 'scheduled_off' 
-                  ? '⚡ الإجازة المطلوبة لا تؤثر على الـ Absence Gate'
-                  : '⚠️ هذا النوع من الغياب يؤثر على الـ Absence Gate'}
+                  ? '⚡ Requested leave does not affect the Absence Gate'
+                  : '⚠️ This absence type affects the Absence Gate score'}
               </p>
             </div>
             <div className="space-y-2">
-              <Label>ملاحظات (اختياري)</Label>
+              <Label>Notes (optional)</Label>
               <Textarea
                 value={absenceNotes}
                 onChange={(e) => setAbsenceNotes(e.target.value)}
-                placeholder="سبب الغياب..."
+                placeholder="Reason for absence..."
                 rows={2}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
-              إلغاء
+              Cancel
             </Button>
             <Button variant="destructive" onClick={handleRecordAbsence} disabled={absenceSaving}>
-              {absenceSaving ? "جاري الحفظ..." : "تسجيل الغياب"}
+              {absenceSaving ? "Saving..." : "Record Absence"}
             </Button>
           </DialogFooter>
         </DialogContent>
