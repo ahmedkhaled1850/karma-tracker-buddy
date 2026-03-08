@@ -7,7 +7,6 @@ interface DailySummaryCardProps {
   dailyTarget: number;
   shiftTimeLeft: string;
   shiftLabel: string;
-  karma: number;
 }
 
 export const DailySummaryCard = ({
