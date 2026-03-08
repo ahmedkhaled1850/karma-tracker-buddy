@@ -326,7 +326,8 @@ export default function Settings() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={onSalarySave} className="space-y-4">
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
                                 <Label>Base Salary (Monthly)</Label>
                                 <Input
                                     type="number"
@@ -336,10 +337,56 @@ export default function Settings() {
                                     step="0.01"
                                     min="0"
                                 />
-                                <p className="text-xs text-muted-foreground">Your gross monthly salary before deductions</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Tax Rate (%)</Label>
+                                <p className="text-xs text-muted-foreground">Gross monthly salary before deductions</p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>KPI Percentage of Salary (%)</Label>
+                                <Input
+                                    type="number"
+                                    value={kpiPercentage}
+                                    onChange={(e) => setKpiPercentage(e.target.value)}
+                                    placeholder="e.g. 70"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                />
+                                <p className="text-xs text-muted-foreground">KPI pool as a percentage of base salary</p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Transportation Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={transportAllowance}
+                                    onChange={(e) => setTransportAllowance(e.target.value)}
+                                    placeholder="e.g. 500"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Internet Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={internetAllowance}
+                                    onChange={(e) => setInternetAllowance(e.target.value)}
+                                    placeholder="e.g. 200"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Senior Bonus</Label>
+                                <Input
+                                    type="number"
+                                    value={seniorBonus}
+                                    onChange={(e) => setSeniorBonus(e.target.value)}
+                                    placeholder="e.g. 300"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Tax & Insurance Rate (%)</Label>
                                 <Input
                                     type="number"
                                     value={taxRate}
@@ -349,13 +396,14 @@ export default function Settings() {
                                     min="0"
                                     max="100"
                                 />
-                                <p className="text-xs text-muted-foreground">Percentage deducted from your KPI bonus (taxes & insurance)</p>
+                                <p className="text-xs text-muted-foreground">Deducted from total gross salary</p>
+                              </div>
                             </div>
                             <div className="bg-muted/50 p-4 rounded-lg space-y-1 text-sm">
-                                <p className="font-medium">How KPI Payout is Calculated:</p>
-                                <p className="text-muted-foreground">KPI Pool = Base Salary × 70%</p>
-                                <p className="text-muted-foreground">Gross Bonus = KPI Pool × Final KPI %</p>
-                                <p className="text-muted-foreground">Net Bonus = Gross Bonus × (1 - Tax Rate %)</p>
+                                <p className="font-medium">How Expected Salary is Calculated:</p>
+                                <p className="text-muted-foreground">KPI Bonus = Base Salary × KPI% × Final KPI Score</p>
+                                <p className="text-muted-foreground">Gross = Base + KPI Bonus + Transport + Internet + Senior Bonus</p>
+                                <p className="text-muted-foreground">Net = Gross × (1 - Tax Rate %)</p>
                             </div>
                             <Button type="submit" disabled={isSalarySaving}>
                                 <Save className="mr-2 h-4 w-4" /> {isSalarySaving ? "Saving..." : "Save Salary Settings"}
