@@ -82,34 +82,7 @@ export const GenesysTicketForm = ({
     toast.success("Ticket removed");
   };
 
-  // Channel distribution for good tickets
-  const channelDistribution = useMemo(() => {
-    const trackedByChannel = { phone: 0, chat: 0, email: 0 };
-    tickets.forEach(t => {
-      if (t.ratingScore >= 7 && t.ratingScore <= 9) {
-        const ch = (t.channel || "Phone").toLowerCase() as "phone" | "chat" | "email";
-        trackedByChannel[ch]++;
-      }
-    });
-    return {
-      phone: goodByChannel.phone,
-      chat: goodByChannel.chat,
-      email: goodByChannel.email,
-      total: goodByChannel.phone + goodByChannel.chat + goodByChannel.email,
-    };
-  }, [tickets, goodByChannel]);
-
-  const handleChannelUpdate = (channel: "phone" | "chat" | "email", delta: number) => {
-    if (!onGoodByChannelChange) return;
-    const updated = { ...goodByChannel, [channel]: Math.max(0, goodByChannel[channel] + delta) };
-    onGoodByChannelChange(updated);
-  };
-
-  const channelIcons = {
-    phone: Phone,
-    chat: MessageSquare,
-    email: Mail,
-  };
+  
 
   return (
     <>
