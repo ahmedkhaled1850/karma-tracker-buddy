@@ -160,7 +160,7 @@ export default function Settings() {
     try { usernameSchema.parse(username); } catch (err) {
       if (err instanceof z.ZodError) { toast.error(err.errors[0].message); return; }
     }
-    updateProfileMutation.mutate(username);
+    updateProfileMutation.mutate({ newUsername: username, newDisplayName: displayName });
     const { error } = await supabase.auth.updateUser({ data: { autosaveMode } });
     if (error) toast.error("Failed to save preferences: " + error.message);
     else toast.success("Preferences saved");
