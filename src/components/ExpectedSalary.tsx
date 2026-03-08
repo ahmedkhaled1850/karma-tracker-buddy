@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award } from "lucide-react";
+import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award, Languages } from "lucide-react";
 
 interface ExpectedSalaryProps {
   userId: string;
