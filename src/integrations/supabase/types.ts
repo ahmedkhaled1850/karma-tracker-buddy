@@ -443,8 +443,12 @@ export type Database = {
           break3_time: string | null
           created_at: string
           id: string
+          internet_allowance: number | null
+          kpi_percentage: number | null
+          senior_bonus: number | null
           shift_start_time: string | null
           tax_rate: number | null
+          transportation_allowance: number | null
           updated_at: string
           user_id: string
           work_days: Json | null
@@ -456,8 +460,12 @@ export type Database = {
           break3_time?: string | null
           created_at?: string
           id?: string
+          internet_allowance?: number | null
+          kpi_percentage?: number | null
+          senior_bonus?: number | null
           shift_start_time?: string | null
           tax_rate?: number | null
+          transportation_allowance?: number | null
           updated_at?: string
           user_id: string
           work_days?: Json | null
@@ -469,8 +477,12 @@ export type Database = {
           break3_time?: string | null
           created_at?: string
           id?: string
+          internet_allowance?: number | null
+          kpi_percentage?: number | null
+          senior_bonus?: number | null
           shift_start_time?: string | null
           tax_rate?: number | null
+          transportation_allowance?: number | null
           updated_at?: string
           user_id?: string
           work_days?: Json | null
