@@ -17,8 +17,7 @@ import { useTheme } from "next-themes";
 const usernameSchema = z
   .string()
   .min(3, "Username must be at least 3 characters")
-  .max(20, "Username must be under 20 characters")
-  .regex(/^[A-Za-z0-9_]+$/, "Only letters, numbers and underscore are allowed");
+  .max(20, "Username must be under 20 characters");
 
 const passwordSchema = z
   .string()
@@ -33,6 +32,7 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [autosaveMode, setAutosaveMode] = useState<"manual" | "immediate" | "hourly">("manual");
   const [appTheme, setAppTheme] = useState<string>("dark");
   
@@ -69,6 +69,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (profile?.username) setUsername(profile.username);
+    if ((profile as any)?.display_name) setDisplayName((profile as any).display_name);
     const metaMode = (user?.user_metadata as Record<string, unknown> | undefined)?.autosaveMode;
     if (metaMode === "immediate" || metaMode === "hourly" || metaMode === "manual") {
       setAutosaveMode(metaMode as any);
@@ -135,10 +136,10 @@ export default function Settings() {
   };
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (newUsername: string) => {
+    mutationFn: async ({ newUsername, newDisplayName }: { newUsername: string; newDisplayName: string }) => {
       const { error } = await supabase
         .from("profiles")
-        .update({ username: newUsername })
+        .update({ username: newUsername, display_name: newDisplayName } as any)
         .eq("user_id", user?.id || "");
       if (error) throw error;
     },
@@ -159,7 +160,7 @@ export default function Settings() {
     try { usernameSchema.parse(username); } catch (err) {
       if (err instanceof z.ZodError) { toast.error(err.errors[0].message); return; }
     }
-    updateProfileMutation.mutate(username);
+    updateProfileMutation.mutate({ newUsername: username, newDisplayName: displayName });
     const { error } = await supabase.auth.updateUser({ data: { autosaveMode } });
     if (error) toast.error("Failed to save preferences: " + error.message);
     else toast.success("Preferences saved");
@@ -212,9 +213,16 @@ export default function Settings() {
                   <Input value={user?.email || ""} disabled className="bg-muted/50" />
                 </div>
                 <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /> Display Name</Label>
+                  <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your display name"
+                    disabled={isProfileLoading || updateProfileMutation.isPending} />
+                  <p className="text-[11px] text-muted-foreground">The name shown to others</p>
+                </div>
+                <div className="space-y-2">
                   <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /> Username</Label>
                   <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter username"
                     disabled={isProfileLoading || updateProfileMutation.isPending} />
+                  <p className="text-[11px] text-muted-foreground">3-20 characters, used as your unique identifier</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
