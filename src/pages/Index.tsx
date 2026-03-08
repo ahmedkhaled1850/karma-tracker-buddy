@@ -1497,6 +1497,12 @@ const Index = () => {
 
   return (
     <div className="relative">
+      {/* Celebration Animation */}
+      <CelebrationAnimation
+        trigger={celebrationTrigger}
+        type={celebrationType || "confetti"}
+        onComplete={() => setCelebrationTrigger(false)}
+      />
       {/* BreakScheduler always mounted for next-event broadcasting */}
       <div className={activeTab === "notes" ? "" : "hidden"}>
         <div className="space-y-4 mb-4">
