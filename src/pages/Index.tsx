@@ -378,9 +378,9 @@ const Index = () => {
             ratingScore: t.rating_score,
             customerPhone: t.customer_phone || "",
             ticketDate: t.ticket_date,
-            ticketId: (t as any).ticket_id || "",
-            channel: ((t as any).channel as "Phone" | "Chat" | "Email") || "Phone",
-            note: (t as any).note || "",
+            ticketId: t.ticket_id || "",
+            channel: (t.channel as "Phone" | "Chat" | "Email") || "Phone",
+            note: t.note || "",
           }));
           
           // Auto-generate missing good ticket records for regular good ratings
@@ -1051,6 +1051,9 @@ const Index = () => {
           rating_score: ticket.ratingScore,
           customer_phone: ticket.customerPhone,
           ticket_date: ticket.ticketDate,
+          channel: ticket.channel || "Phone",
+          ticket_id: ticket.ticketId || "",
+          note: ticket.note || "",
           user_id: user.id,
         }));
 
@@ -1578,11 +1581,6 @@ const Index = () => {
                 tickets={genesysTickets}
                 onTicketsChange={setGenesysTickets}
                 totalGood={totalGood}
-                goodByChannel={data.goodByChannel}
-                onGoodByChannelChange={(channels) => {
-                  setData(prev => ({ ...prev, goodByChannel: channels }));
-                  setTimeout(() => { if (!isSaving) saveToDatabase(); }, 0);
-                }}
               />
 
               {/* Tickets Table */}

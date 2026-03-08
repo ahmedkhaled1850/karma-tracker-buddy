@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Phone, MessageSquare, Mail } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface GenesysTicket {
@@ -24,16 +24,12 @@ interface GenesysTicketFormProps {
   tickets: GenesysTicket[];
   onTicketsChange: (tickets: GenesysTicket[]) => void;
   totalGood?: number;
-  goodByChannel?: { phone: number; chat: number; email: number };
-  onGoodByChannelChange?: (channel: { phone: number; chat: number; email: number }) => void;
 }
 
 export const GenesysTicketForm = ({ 
   tickets, 
   onTicketsChange, 
   totalGood = 0,
-  goodByChannel = { phone: 0, chat: 0, email: 0 },
-  onGoodByChannelChange,
 }: GenesysTicketFormProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newTicket, setNewTicket] = useState<GenesysTicket>({
@@ -82,34 +78,7 @@ export const GenesysTicketForm = ({
     toast.success("Ticket removed");
   };
 
-  // Channel distribution for good tickets
-  const channelDistribution = useMemo(() => {
-    const trackedByChannel = { phone: 0, chat: 0, email: 0 };
-    tickets.forEach(t => {
-      if (t.ratingScore >= 7 && t.ratingScore <= 9) {
-        const ch = (t.channel || "Phone").toLowerCase() as "phone" | "chat" | "email";
-        trackedByChannel[ch]++;
-      }
-    });
-    return {
-      phone: goodByChannel.phone,
-      chat: goodByChannel.chat,
-      email: goodByChannel.email,
-      total: goodByChannel.phone + goodByChannel.chat + goodByChannel.email,
-    };
-  }, [tickets, goodByChannel]);
-
-  const handleChannelUpdate = (channel: "phone" | "chat" | "email", delta: number) => {
-    if (!onGoodByChannelChange) return;
-    const updated = { ...goodByChannel, [channel]: Math.max(0, goodByChannel[channel] + delta) };
-    onGoodByChannelChange(updated);
-  };
-
-  const channelIcons = {
-    phone: Phone,
-    chat: MessageSquare,
-    email: Mail,
-  };
+  
 
   return (
     <>
@@ -175,76 +144,18 @@ export const GenesysTicketForm = ({
         </DialogContent>
       </Dialog>
 
-      {/* Good Ticket Summary - shows ALL good tickets */}
-      {totalGood > 0 && (
+      {/* Genesys Tickets Detail */}
+      {tickets.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Good Ticket Summary</span>
+              <span>Genesys Ticket Details</span>
               <Badge variant="secondary" className="text-sm">
                 {totalGood} total good
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Channel Distribution Controls */}
-            <div className="p-4 bg-muted/50 rounded-xl border border-border">
-              <h4 className="text-sm font-semibold text-foreground mb-3">
-                📊 Good Ratings by Channel
-              </h4>
-              <p className="text-xs text-muted-foreground mb-4">
-                Distribute your {totalGood} good ratings across channels to track per-channel performance
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {(["phone", "chat", "email"] as const).map((ch) => {
-                  const Icon = channelIcons[ch];
-                  
-                  return (
-                    <div key={ch} className="text-center p-3 bg-background rounded-lg border shadow-sm space-y-2">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Icon className="h-4 w-4 text-primary" />
-                        <span className="text-xs font-medium capitalize">{ch}</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleChannelUpdate(ch, -1)}
-                          disabled={goodByChannel[ch] <= 0}
-                        >
-                          -
-                        </Button>
-                        <span className="text-lg font-bold text-foreground min-w-[2rem]">
-                          {goodByChannel[ch]}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleChannelUpdate(ch, 1)}
-                          disabled={channelDistribution.total >= totalGood}
-                        >
-                          +
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {channelDistribution.total !== totalGood && (
-                <p className="text-xs text-warning mt-2 text-center">
-                  ⚠️ {totalGood - channelDistribution.total} good ratings not assigned to a channel yet
-                </p>
-              )}
-              {channelDistribution.total === totalGood && (
-                <p className="text-xs text-success mt-2 text-center">
-                  ✅ All good ratings distributed across channels
-                </p>
-              )}
-            </div>
-
-            {/* Genesys Tickets Detail (existing tracked tickets) */}
             {tickets.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-2">
