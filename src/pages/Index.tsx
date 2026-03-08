@@ -1051,6 +1051,9 @@ const Index = () => {
           rating_score: ticket.ratingScore,
           customer_phone: ticket.customerPhone,
           ticket_date: ticket.ticketDate,
+          channel: ticket.channel || "Phone",
+          ticket_id: ticket.ticketId || "",
+          note: ticket.note || "",
           user_id: user.id,
         }));
 
