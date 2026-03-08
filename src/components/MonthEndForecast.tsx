@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Target, Calendar, AlertTriangle, CheckCircle, Brain, Zap, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { Target, Calendar, AlertTriangle, CheckCircle, Brain, Zap, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
