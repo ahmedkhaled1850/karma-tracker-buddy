@@ -1558,6 +1558,39 @@ const Index = () => {
               />
             </div>
 
+            {/* Streaks & Milestones */}
+            <StreaksMilestones
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              todayGood={todayStats.good}
+              dailyTarget={dailyTargetForSummary}
+            />
+
+            {/* Daily KPI Target */}
+            <DailyKPITarget
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              csatPercentage={csat}
+              totalGood={totalGood}
+              totalSurveys={totalSurveys}
+              remainingWorkDays={remainingWorkingDays}
+              kpiScore={kpiScore}
+            />
+
+            {/* Smart Tips */}
+            <SmartKPITips
+              kpiScore={kpiScore}
+              avgDailyCalls={0}
+              totalCalls={0}
+              recordedDays={0}
+              csatPercentage={csat}
+              totalGood={totalGood}
+              totalSurveys={totalSurveys}
+              remainingWorkDays={remainingWorkingDays}
+            />
+
             {/* Survey Conversion - Secondary priority, always visible */}
             <SurveyConversion
               userId={user.id}
