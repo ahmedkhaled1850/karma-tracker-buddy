@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Download, ThumbsUp, ThumbsDown, AlertTriangle, LogOut, Clock } from "lucide-react";
+import { ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
  
 import { MetricCard } from "@/components/MetricCard";
