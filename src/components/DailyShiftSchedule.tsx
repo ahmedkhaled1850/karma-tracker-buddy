@@ -303,26 +303,45 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                       {shift.absence_type === 'scheduled_off' && <Badge variant="outline" className="text-[10px] px-1.5 py-0">📅 Scheduled</Badge>}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <Sun className="h-3 w-3 text-warning" />
-                        <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_start)}</span>
+                    <div className="space-y-1">
+                      {/* Shift Times */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <Sun className="h-3 w-3 text-warning" />
+                          <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_start)}</span>
+                        </div>
+                        <span className="text-muted-foreground text-xs">→</span>
+                        <div className="flex items-center gap-1.5">
+                          <Moon className="h-3 w-3 text-primary" />
+                          <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_end)}</span>
+                        </div>
+                        {isToday && <Badge className="text-[9px] px-1 py-0">Today</Badge>}
                       </div>
-                      <span className="text-muted-foreground text-xs">→</span>
-                      <div className="flex items-center gap-1.5">
-                        <Moon className="h-3 w-3 text-primary" />
-                        <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_end)}</span>
-                      </div>
-                      {shift.break1_time && (
-                        <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{shift.break1_duration || 15}+{shift.break2_duration || 30}+{shift.break3_duration || 15}m</span>
+
+                      {/* Breaks Detail */}
+                      {(shift.break1_time || shift.break2_time || shift.break3_time) && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          {shift.break1_time && (
+                            <span className="text-[11px] text-muted-foreground">
+                              <span className="text-foreground/70 font-medium">B1</span> {formatTime12H(shift.break1_time)}–{calcBreakEnd(shift.break1_time, shift.break1_duration || 15)} <span className="text-muted-foreground/60">({shift.break1_duration || 15}m)</span>
+                            </span>
+                          )}
+                          {shift.break2_time && (
+                            <span className="text-[11px] text-muted-foreground">
+                              <span className="text-foreground/70 font-medium">B2</span> {formatTime12H(shift.break2_time)}–{calcBreakEnd(shift.break2_time, shift.break2_duration || 30)} <span className="text-muted-foreground/60">({shift.break2_duration || 30}m)</span>
+                            </span>
+                          )}
+                          {shift.break3_time && (
+                            <span className="text-[11px] text-muted-foreground">
+                              <span className="text-foreground/70 font-medium">B3</span> {formatTime12H(shift.break3_time)}–{calcBreakEnd(shift.break3_time, shift.break3_duration || 15)} <span className="text-muted-foreground/60">({shift.break3_duration || 15}m)</span>
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
                   {shift.notes && (
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">{shift.notes}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">📝 {shift.notes}</p>
                   )}
                 </div>
 
