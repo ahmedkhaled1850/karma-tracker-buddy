@@ -1475,7 +1475,7 @@ const Index = () => {
       <div className={activeTab === "notes" ? "" : "hidden"}>
         <div className="space-y-4 mb-4">
           <h3 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Break Time ⏱️</h3>
-          <BreakScheduler />
+          <BreakScheduler performanceId={performanceId} />
         </div>
       </div>
       {/* Header: Month + Quick Actions */}

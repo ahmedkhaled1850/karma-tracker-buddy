@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Bell, TimerReset, AlarmClockCheck, Loader2 } from "lucide-react";
+import { Bell, TimerReset, AlarmClockCheck, Loader2, Clock } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { getStaticShift, formatTime12H } from "@/lib/staticSchedule";
 import { DailyShift } from "@/lib/types";
 
@@ -22,8 +27,13 @@ const BREAK_LABELS: Record<BreakKey, string> = {
   break3: "Third Break",
 };
 
-export const BreakScheduler = () => {
+interface BreakSchedulerProps {
+  performanceId?: string | null;
+}
+
+export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [schedule, setSchedule] = useState<Record<BreakKey, string>>({
     break1: "11:00",
     break2: "14:00",
@@ -45,6 +55,12 @@ export const BreakScheduler = () => {
   const [shiftStart, setShiftStart] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const initialLoadRef = useRef(true);
+
+  // Late break state
+  const [lateBreakDialog, setLateBreakDialog] = useState(false);
+  const [lateBreakKey, setLateBreakKey] = useState<BreakKey | null>(null);
+  const [lateBreakActualTime, setLateBreakActualTime] = useState("");
+  const [lateBreakSaving, setLateBreakSaving] = useState(false);
 
   const shiftStartDate = useMemo(() => {
     if (!shiftStart) return null;
@@ -458,6 +474,50 @@ export const BreakScheduler = () => {
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
+  const openLateBreakDialog = (key: BreakKey) => {
+    const now = new Date();
+    setLateBreakKey(key);
+    setLateBreakActualTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    setLateBreakDialog(true);
+  };
+
+  const handleSaveLateBreak = async () => {
+    if (!lateBreakKey || !lateBreakActualTime || !user?.id) return;
+    setLateBreakSaving(true);
+    try {
+      const scheduledTime = schedule[lateBreakKey];
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      
+      const noteContent = `⏰ Late Break — ${BREAK_LABELS[lateBreakKey]}\n` +
+        `📅 Date: ${todayStr}\n` +
+        `🕐 Scheduled: ${formatTime12H(scheduledTime)}\n` +
+        `🕐 Actual: ${formatTime12H(lateBreakActualTime)}\n` +
+        `📝 Logged at: ${timeStr}`;
+
+      // Save to daily_notes if we have a performanceId
+      if (performanceId) {
+        const { error } = await supabase.from("daily_notes").insert({
+          performance_id: performanceId,
+          note_date: todayStr,
+          content: noteContent,
+          user_id: user.id,
+        });
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["dailyNotes"] });
+      }
+
+      toast.success("Late break logged in notes!");
+      setLateBreakDialog(false);
+    } catch (error) {
+      console.error("Error saving late break:", error);
+      toast.error("Failed to save late break note");
+    } finally {
+      setLateBreakSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -611,6 +671,17 @@ export const BreakScheduler = () => {
                           </span>
                         </div>
                       )}
+                      {isScheduled && !isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-1.5 h-6 px-2 text-[10px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                          onClick={(e) => { e.stopPropagation(); openLateBreakDialog(key); }}
+                        >
+                          <Clock className="h-3 w-3 mr-0.5" />
+                          Late
+                        </Button>
+                      )}
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground/50">—</p>
@@ -621,6 +692,47 @@ export const BreakScheduler = () => {
           </div>
         </div>
       </Card>
+
+      {/* Late Break Dialog */}
+      <Dialog open={lateBreakDialog} onOpenChange={setLateBreakDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" />
+              Log Late Break
+            </DialogTitle>
+          </DialogHeader>
+          {lateBreakKey && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 space-y-1">
+                <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{BREAK_LABELS[lateBreakKey]}</p>
+                <p className="text-xs text-muted-foreground">
+                  Scheduled at: <span className="font-mono font-medium">{formatTime12H(schedule[lateBreakKey])}</span>
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Actual break time</Label>
+                <Input
+                  type="time"
+                  value={lateBreakActualTime}
+                  onChange={(e) => setLateBreakActualTime(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLateBreakDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleSaveLateBreak}
+              disabled={lateBreakSaving || !lateBreakActualTime}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              {lateBreakSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+              Log Late Break
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
