@@ -17,6 +17,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
     transportAllowance: number;
     internetAllowance: number;
     seniorBonus: number;
+    languageAllowance: number;
   }>({
     baseSalary: null,
     taxRate: null,
@@ -24,6 +25,7 @@ export const ExpectedSalary = ({ userId, kpiScore }: ExpectedSalaryProps) => {
     transportAllowance: 0,
     internetAllowance: 0,
     seniorBonus: 0,
+    languageAllowance: 0,
   });
   const [loading, setLoading] = useState(true);
 
