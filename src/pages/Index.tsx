@@ -1389,7 +1389,51 @@ const Index = () => {
       localStorage.setItem("ktb_metrics_update", JSON.stringify(detail));
     } catch {}
   }, [totalGood, totalBad, data.karmaBad]);
-  
+
+  // Next event from BreakScheduler for daily summary
+  const [nextEvent, setNextEvent] = useState<{ countdown: string; label: string }>({ countdown: "", label: "" });
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ countdown: string; label: string }>;
+      if (ce.detail) setNextEvent(ce.detail);
+    };
+    window.addEventListener("ktb_next_event", handler as EventListener);
+    try {
+      const stored = localStorage.getItem("ktb_next_event");
+      if (stored) setNextEvent(JSON.parse(stored));
+    } catch {}
+    return () => window.removeEventListener("ktb_next_event", handler as EventListener);
+  }, []);
+
+  // Daily target for summary card (88% level)
+  const dailyTargetForSummary = useMemo(() => {
+    const totalKB = totalGood + totalBad + data.karmaBad;
+    const needed = Math.max(0, Math.ceil((0.88 * totalKB - totalGood) / (1 - 0.88)));
+    const days = remainingWorkingDays ?? 1;
+    return needed / Math.max(1, days);
+  }, [totalGood, totalBad, data.karmaBad, remainingWorkingDays]);
+
+  // Smart notifications for target achievement
+  const lastNotifiedRef = useRef<string>("");
+  useEffect(() => {
+    const key = `${todayStats.good}-${Math.ceil(dailyTargetForSummary)}`;
+    if (key === lastNotifiedRef.current) return;
+    
+    const target = Math.ceil(dailyTargetForSummary);
+    if (target <= 0) return;
+    
+    if (todayStats.good === target && todayStats.good > 0) {
+      toast.success("🎯 You reached your daily target! Keep going!");
+      lastNotifiedRef.current = key;
+    } else if (todayStats.good > 0 && target - todayStats.good === 2) {
+      toast("⚡ Just 2 more ratings to hit your daily target!");
+      lastNotifiedRef.current = key;
+    } else if (todayStats.good > 0 && target - todayStats.good === 1) {
+      toast("🔥 One more rating to hit your target!");
+      lastNotifiedRef.current = key;
+    }
+  }, [todayStats.good, dailyTargetForSummary]);
+
 
   const exportToCSV = () => {
     const monthName = new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long" });
