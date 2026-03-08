@@ -236,6 +236,7 @@ export default function Settings() {
         <Tabs defaultValue="account" className="space-y-4">
             <TabsList>
                 <TabsTrigger value="account" className="flex items-center gap-2"><User className="h-4 w-4"/> Account</TabsTrigger>
+                <TabsTrigger value="salary" className="flex items-center gap-2"><DollarSign className="h-4 w-4"/> Salary & KPI</TabsTrigger>
                 <TabsTrigger value="security" className="flex items-center gap-2"><Lock className="h-4 w-4"/> Security</TabsTrigger>
             </TabsList>
 
