@@ -32,6 +32,7 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [autosaveMode, setAutosaveMode] = useState<"manual" | "immediate" | "hourly">("manual");
   const [appTheme, setAppTheme] = useState<string>("dark");
   
