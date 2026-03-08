@@ -53,8 +53,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
     { name: "Overview 📊", tab: "overview", icon: BarChart3 },
     { name: "Tickets 🎫", tab: "tickets", icon: ListChecks },
     { name: "Analytics 📈", tab: "analytics", icon: BarChart3 },
-    { name: "Notes & Schedule 📝", tab: "notes", icon: NotebookText },
-    { name: "Log 📋", tab: "log", icon: ClipboardList },
+    { name: "Notes & Log 📝", tab: "notes", icon: NotebookText },
   ];
 
   const pageLinks = [
