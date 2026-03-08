@@ -15,7 +15,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
   const location = useLocation();
   const { signOut } = useAuth();
-  const [metrics, setMetrics] = useState<{ totalGood: number; totalBad: number; karmaBad: number }>({ totalGood: 0, totalBad: 0, karmaBad: 0 });
+  const [metrics, setMetrics] = useState<{ totalGood: number; totalBad: number; karmaBad: number; kpiScore: number }>({ totalGood: 0, totalBad: 0, karmaBad: 0, kpiScore: 0 });
   const [activeTab, setActiveTab] = useState(() => {
     try { return localStorage.getItem("ktb_active_tab") || "overview"; } catch { return "overview"; }
   });
