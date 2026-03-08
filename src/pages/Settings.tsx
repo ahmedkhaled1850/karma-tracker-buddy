@@ -77,6 +77,57 @@ export default function Settings() {
     if (theme) setAppTheme(theme);
   }, [profile, user]);
 
+  // Load salary settings
+  useEffect(() => {
+    const loadSalary = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from('user_settings')
+        .select('base_salary, tax_rate')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data) {
+        if ((data as any).base_salary != null) setBaseSalary(String((data as any).base_salary));
+        if ((data as any).tax_rate != null) setTaxRate(String((data as any).tax_rate));
+      }
+    };
+    loadSalary();
+  }, [user?.id]);
+
+  const onSalarySave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+    setIsSalarySaving(true);
+    try {
+      const salaryVal = baseSalary ? parseFloat(baseSalary) : null;
+      const taxVal = taxRate ? parseFloat(taxRate) : null;
+      
+      const { data: existing } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('user_settings')
+          .update({ base_salary: salaryVal, tax_rate: taxVal } as any)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('user_settings')
+          .insert({ user_id: user.id, base_salary: salaryVal, tax_rate: taxVal } as any);
+        if (error) throw error;
+      }
+      toast.success("Salary settings saved");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save");
+    } finally {
+      setIsSalarySaving(false);
+    }
+  };
+
   // Update Profile Mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (newUsername: string) => {
