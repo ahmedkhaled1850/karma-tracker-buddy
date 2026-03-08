@@ -1507,20 +1507,13 @@ const Index = () => {
             </div>
 
             {/* Secondary Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <PhoneBonusKPI
-                userId={user.id}
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                csatPercentage={csat}
-                totalSurveys={totalSurveys}
-              />
-              <FCRMetric
-                value={data.fcr}
-                onChange={(value) => setData((prev) => ({ ...prev, fcr: value }))}
-                previousValue={previousMonthData?.fcr}
-              />
-            </div>
+            <PhoneBonusKPI
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              csatPercentage={csat}
+              totalSurveys={totalSurveys}
+            />
 
             {/* Survey Conversion */}
             <SurveyConversion
