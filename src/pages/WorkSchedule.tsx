@@ -124,7 +124,58 @@ export default function WorkSchedule() {
   const totalAbsence = absenceStats.sick + absenceStats.unexcused;
   const absenceGateScore = totalAbsence <= 1 ? 100 : totalAbsence === 2 ? 75 : 0;
 
-  return (
+  // Calculate KPI score for salary estimation
+  // We need productivity and CSAT data
+  const [kpiScore, setKpiScore] = useState(0);
+
+  useEffect(() => {
+    const loadKpi = async () => {
+      if (!user?.id) return;
+      const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${lastDay}`;
+
+      // Productivity
+      const { data: callsData } = await supabase
+        .from('daily_survey_calls')
+        .select('total_calls')
+        .eq('user_id', user.id)
+        .gte('call_date', startDate)
+        .lte('call_date', endDate);
+
+      const validDays = (callsData || []).filter(r => (r.total_calls || 0) > 0);
+      const totalCalls = validDays.reduce((s, r) => s + (r.total_calls || 0), 0);
+      const avg = validDays.length > 0 ? totalCalls / validDays.length : 0;
+      const prodScore = avg >= 30 ? 100 : avg >= 28 ? 75 : avg >= 26 ? 50 : 0;
+
+      // CSAT from performance_data
+      const { data: perfData } = await supabase
+        .from('performance_data')
+        .select('good, bad, genesys_good, genesys_bad')
+        .eq('user_id', user.id)
+        .eq('year', selectedYear)
+        .eq('month', selectedMonth)
+        .maybeSingle();
+
+      let csatScore = 100; // default if no surveys
+      if (perfData) {
+        const totalGood = (perfData.good || 0) + (perfData.genesys_good || 0);
+        const totalBad = (perfData.bad || 0) + (perfData.genesys_bad || 0);
+        const total = totalGood + totalBad;
+        if (total > 0) {
+          const csatPct = (totalGood / total) * 100;
+          csatScore = csatPct >= 93 ? 100 : csatPct >= 90 ? 75 : csatPct >= 87 ? 50 : 0;
+        }
+      }
+
+      // Absence gate
+      const gate = totalAbsence <= 1 ? 100 : totalAbsence === 2 ? 75 : 0;
+
+      const final = ((prodScore * 0.5 + csatScore * 0.5) * gate) / 100;
+      setKpiScore(final);
+    };
+    loadKpi();
+  }, [user?.id, selectedMonth, selectedYear, totalAbsence]);
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
       <Card className="p-6 bg-card border-border">
         <div className="flex items-center justify-between">
