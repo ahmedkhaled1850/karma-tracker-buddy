@@ -190,4 +190,15 @@ All colors MUST be HSL.
     font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
   }
+
+  /* Mobile-optimized card spacing */
+  @media (max-width: 767px) {
+    .card-hover:hover {
+      transform: none;
+    }
+    .card-hover:active {
+      transform: scale(0.98);
+      transition: transform 0.1s ease;
+    }
+  }
 }
