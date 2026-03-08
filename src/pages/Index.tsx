@@ -1541,25 +1541,25 @@ const Index = () => {
               shiftLabel={nextEvent.label}
             />
 
-            {/* Hero: KPI (primary focus) */}
-            <PercentageDisplay
-              title="KPI"
-              percentage={kpiScore}
-              subtitle="Phone Bonus — Main Target 🎯"
-            />
+            {/* Hero: KPI & CSAT side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <PercentageDisplay
+                title="KPI"
+                percentage={kpiScore}
+                subtitle="Phone Bonus 🎯"
+              />
+              <PercentageDisplay
+                title="CSAT"
+                percentage={csat}
+                subtitle={`${totalGood} / ${totalSurveys}`}
+              />
+            </div>
 
             {/* Survey Conversion - Secondary priority, always visible */}
             <SurveyConversion
               userId={user.id}
               selectedMonth={selectedMonth}
               selectedYear={selectedYear}
-            />
-
-            {/* CSAT circle - supporting metric */}
-            <PercentageDisplay
-              title="CSAT"
-              percentage={csat}
-              subtitle={`${totalGood} / ${totalSurveys}`}
             />
 
             {/* Monitoring Section: Counters as compact row */}
