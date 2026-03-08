@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Save, Loader2, Trash2, Clock, Sun, Moon } from "lucide-react";
+import { Calendar, Save, Loader2, Trash2, Sun, Moon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -215,6 +215,14 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
   const getDayName = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
   const getDayNumber = (dateStr: string) => parseInt(dateStr.split('-')[2], 10);
 
+  const calcBreakEnd = (startTime: string, durationMin: number): string => {
+    const [h, m] = startTime.split(':').map(Number);
+    const totalMin = h * 60 + m + durationMin;
+    const endH = Math.floor(totalMin / 60) % 24;
+    const endM = totalMin % 60;
+    return formatTime12H(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+  };
+
   const todayStr = useMemo(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -303,26 +311,45 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                       {shift.absence_type === 'scheduled_off' && <Badge variant="outline" className="text-[10px] px-1.5 py-0">📅 Scheduled</Badge>}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <Sun className="h-3 w-3 text-warning" />
-                        <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_start)}</span>
+                    <div className="space-y-1">
+                      {/* Shift Times */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <Sun className="h-3 w-3 text-warning" />
+                          <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_start)}</span>
+                        </div>
+                        <span className="text-muted-foreground text-xs">→</span>
+                        <div className="flex items-center gap-1.5">
+                          <Moon className="h-3 w-3 text-primary" />
+                          <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_end)}</span>
+                        </div>
+                        {isToday && <Badge className="text-[9px] px-1 py-0">Today</Badge>}
                       </div>
-                      <span className="text-muted-foreground text-xs">→</span>
-                      <div className="flex items-center gap-1.5">
-                        <Moon className="h-3 w-3 text-primary" />
-                        <span className="text-sm font-mono font-medium">{formatTime12H(shift.shift_end)}</span>
-                      </div>
-                      {shift.break1_time && (
-                        <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{shift.break1_duration || 15}+{shift.break2_duration || 30}+{shift.break3_duration || 15}m</span>
+
+                      {/* Breaks Detail */}
+                      {(shift.break1_time || shift.break2_time || shift.break3_time) && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          {shift.break1_time && (
+                            <span className="text-[11px] text-muted-foreground">
+                              <span className="text-foreground/70 font-medium">B1</span> {formatTime12H(shift.break1_time)}–{calcBreakEnd(shift.break1_time, shift.break1_duration || 15)} <span className="text-muted-foreground/60">({shift.break1_duration || 15}m)</span>
+                            </span>
+                          )}
+                          {shift.break2_time && (
+                            <span className="text-[11px] text-muted-foreground">
+                              <span className="text-foreground/70 font-medium">B2</span> {formatTime12H(shift.break2_time)}–{calcBreakEnd(shift.break2_time, shift.break2_duration || 30)} <span className="text-muted-foreground/60">({shift.break2_duration || 30}m)</span>
+                            </span>
+                          )}
+                          {shift.break3_time && (
+                            <span className="text-[11px] text-muted-foreground">
+                              <span className="text-foreground/70 font-medium">B3</span> {formatTime12H(shift.break3_time)}–{calcBreakEnd(shift.break3_time, shift.break3_duration || 15)} <span className="text-muted-foreground/60">({shift.break3_duration || 15}m)</span>
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
                   {shift.notes && (
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">{shift.notes}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">📝 {shift.notes}</p>
                   )}
                 </div>
 
@@ -334,7 +361,6 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   )}
-                  {isToday && <Badge className="text-[9px] px-1 py-0">Today</Badge>}
                 </div>
               </div>
             </Card>
