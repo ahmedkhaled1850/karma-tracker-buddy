@@ -445,6 +445,7 @@ export type Database = {
           id: string
           internet_allowance: number | null
           kpi_percentage: number | null
+          language_allowance: number | null
           senior_bonus: number | null
           shift_start_time: string | null
           tax_rate: number | null
@@ -462,6 +463,7 @@ export type Database = {
           id?: string
           internet_allowance?: number | null
           kpi_percentage?: number | null
+          language_allowance?: number | null
           senior_bonus?: number | null
           shift_start_time?: string | null
           tax_rate?: number | null
@@ -479,6 +481,7 @@ export type Database = {
           id?: string
           internet_allowance?: number | null
           kpi_percentage?: number | null
+          language_allowance?: number | null
           senior_bonus?: number | null
           shift_start_time?: string | null
           tax_rate?: number | null
