@@ -1512,17 +1512,12 @@ const Index = () => {
       </div>
       {/* Header: Month + Quick Actions */}
       <div className="flex items-center justify-between mb-3 gap-2">
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg md:text-xl font-bold text-foreground truncate">
-            {new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "short", year: "numeric" })}
-          </h1>
-          <MonthSelector
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            onMonthChange={setSelectedMonth}
-            onYearChange={setSelectedYear}
-          />
-        </div>
+        <MonthSelector
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+        />
         {activeTab === "overview" && (
           <QuickActionsBar
             onExport={exportToCSV}
