@@ -610,37 +610,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </main>
       </div>
 
-      <div id="ktb-floating-circle" className="fixed bottom-6 right-6 z-50">
-        <div
-          className="relative h-28 w-28 rounded-full bg-gradient-to-br from-card to-muted shadow-xl flex items-center justify-center select-none cursor-pointer hover:scale-110 transition-all duration-300 group"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onClick={onCircleClick}
-          title={
-            shiftStartDate && shiftEndDate
-              ? (Date.now() < shiftStartDate.getTime()
-                  ? `Next shift at ${shiftStartDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                  : (Date.now() <= shiftEndDate.getTime()
-                      ? (nextBreak ? `Next: ${labelFor(nextBreak.key)} at ${nextBreak.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : `Shift ends at ${shiftEndDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`)
-                      : `Next shift at ${new Date(shiftStartDate.getTime() + 24 * 3600 * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`))
-              : (nextBreak ? `Next: ${labelFor(nextBreak.key)} at ${nextBreak.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "")
-          }
-        >
-          {/* Outer glow pulse */}
-          <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-primary/20 to-primary-glow/20 blur-md animate-pulse-glow group-hover:from-primary/40 group-hover:to-primary-glow/40 transition-all duration-500" />
-          {/* Background circle */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-card via-card to-muted border-2 border-primary/25 group-hover:border-primary/50 transition-colors" />
-          {/* Spinning ring */}
-          <div className="absolute inset-1 rounded-full border-2 border-primary/30 animate-[spin_6s_linear_infinite]" style={{ borderTopColor: "transparent", borderRightColor: "transparent" }} />
-          {/* Second spinning ring (opposite) */}
-          <div className="absolute inset-2 rounded-full border border-primary/15 animate-[spin_8s_linear_infinite_reverse]" style={{ borderBottomColor: "transparent", borderLeftColor: "transparent" }} />
-          {/* Inner content */}
-          <div className="relative text-[0.7rem] font-bold text-foreground text-center leading-tight px-3">
-            {nextText || "⏱️"}
-          </div>
-        </div>
-      </div>
 
       {showLoader && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center">
