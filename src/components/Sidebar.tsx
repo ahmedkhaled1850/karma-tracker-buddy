@@ -94,28 +94,40 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="w-full px-2">
-                      <div className="text-[11px] font-semibold flex flex-col items-center gap-1.5">
-                        <div className="leading-none">
-                          <span className="text-muted-foreground">CSAT</span>
-                          <span className="mx-1 text-muted-foreground">·</span>
-                          <span className="text-foreground font-bold">{(() => {
-                            const total = metrics.totalGood + metrics.totalBad;
-                            return total > 0 ? `${((metrics.totalGood / total) * 100).toFixed(1)}%` : "100%";
-                          })()}</span>
-                        </div>
-                        <div className="leading-none">
-                          <span className="text-muted-foreground">Karma</span>
-                          <span className="mx-1 text-muted-foreground">·</span>
-                          <span className="text-foreground font-bold">{(() => {
-                            const base = metrics.totalGood + metrics.totalBad + metrics.karmaBad;
-                            return base > 0 ? `${((metrics.totalGood / base) * 100).toFixed(1)}%` : "100%";
-                          })()}</span>
-                        </div>
-                      </div>
+                    <div className="flex flex-col items-center gap-1 py-2">
+                      {/* Mini circular indicators instead of text */}
+                      {(() => {
+                        const csatTotal = metrics.totalGood + metrics.totalBad;
+                        const csatPct = csatTotal > 0 ? (metrics.totalGood / csatTotal) * 100 : 100;
+                        const karmaBase = metrics.totalGood + metrics.totalBad + metrics.karmaBad;
+                        const karmaPct = karmaBase > 0 ? (metrics.totalGood / karmaBase) * 100 : 100;
+                        const getColor = (pct: number) => pct >= 95 ? 'text-success stroke-success' : pct >= 88 ? 'text-primary stroke-primary' : 'text-warning stroke-warning';
+                        const circumference = 2 * Math.PI * 8;
+                        return [
+                          { pct: csatPct, label: 'C' },
+                          { pct: karmaPct, label: 'K' },
+                        ].map((item, i) => (
+                          <div key={i} className="relative w-9 h-9 flex items-center justify-center">
+                            <svg width="36" height="36" viewBox="0 0 20 20" className="-rotate-90">
+                              <circle cx="10" cy="10" r="8" fill="none" stroke="hsl(var(--muted))" strokeWidth="2" />
+                              <circle cx="10" cy="10" r="8" fill="none" className={getColor(item.pct)}
+                                strokeWidth="2" strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={circumference - (Math.min(item.pct, 100) / 100) * circumference}
+                              />
+                            </svg>
+                            <span className={`absolute text-[8px] font-bold ${getColor(item.pct).split(' ')[0]}`}>{item.pct.toFixed(0)}</span>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Goals Summary</TooltipContent>
+                  <TooltipContent side="right">
+                    <div className="text-xs space-y-1">
+                      <div>CSAT: {(() => { const t = metrics.totalGood + metrics.totalBad; return t > 0 ? ((metrics.totalGood / t) * 100).toFixed(1) : "100"; })()}%</div>
+                      <div>Karma: {(() => { const b = metrics.totalGood + metrics.totalBad + metrics.karmaBad; return b > 0 ? ((metrics.totalGood / b) * 100).toFixed(1) : "100"; })()}%</div>
+                    </div>
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             ) : (
