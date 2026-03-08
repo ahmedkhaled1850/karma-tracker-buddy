@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lightbulb, TrendingUp, Phone, SmilePlus, Target } from "lucide-react";
 
 interface SmartKPITipsProps {
+  userId: string;
+  selectedMonth: number;
+  selectedYear: number;
   kpiScore: number;
-  avgDailyCalls: number;
-  totalCalls: number;
-  recordedDays: number;
   csatPercentage: number;
   totalGood: number;
   totalSurveys: number;
