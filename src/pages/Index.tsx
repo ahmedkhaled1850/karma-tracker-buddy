@@ -1425,16 +1425,21 @@ const Index = () => {
   return (
     <div className="relative">
       {/* Month Selector */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg md:text-2xl font-bold text-foreground">
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">
           {new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long", year: "numeric" })}
         </h1>
-        <MonthSelector
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          onMonthChange={setSelectedMonth}
-          onYearChange={setSelectedYear}
-        />
+        <div className="flex items-center gap-2">
+          <Button onClick={exportToCSV} variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+            <Download className="h-4 w-4" />
+          </Button>
+          <MonthSelector
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onMonthChange={setSelectedMonth}
+            onYearChange={setSelectedYear}
+          />
+        </div>
       </div>
 
           {activeTab === "overview" && (
