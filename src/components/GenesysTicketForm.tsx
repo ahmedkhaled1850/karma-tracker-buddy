@@ -24,8 +24,6 @@ interface GenesysTicketFormProps {
   tickets: GenesysTicket[];
   onTicketsChange: (tickets: GenesysTicket[]) => void;
   totalGood?: number;
-  goodByChannel?: { phone: number; chat: number; email: number };
-  onGoodByChannelChange?: (channel: { phone: number; chat: number; email: number }) => void;
 }
 
 export const GenesysTicketForm = ({ 
