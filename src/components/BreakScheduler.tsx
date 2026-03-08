@@ -144,11 +144,12 @@ export const BreakScheduler = () => {
            }
         }
 
-        // Apply shift data if available
+        // Apply shift data if available — use exact values (including empty)
         if (currentShift) {
-          if (currentShift.break1_time) initialSchedule.break1 = currentShift.break1_time;
-          if (currentShift.break2_time) initialSchedule.break2 = currentShift.break2_time;
-          if (currentShift.break3_time) initialSchedule.break3 = currentShift.break3_time;
+          // When a shift exists, override ALL breaks — empty means no break
+          initialSchedule.break1 = currentShift.break1_time || "";
+          initialSchedule.break2 = currentShift.break2_time || "";
+          initialSchedule.break3 = currentShift.break3_time || "";
           if (currentShift.shift_start) initialShiftStart = currentShift.shift_start;
         }
 
@@ -200,9 +201,12 @@ export const BreakScheduler = () => {
   const nextUp = useMemo(() => {
     if (loading) return null;
     const now = new Date();
+    // Filter out empty breaks
+    const activeBreaks = (["break1", "break2", "break3"] as BreakKey[]).filter(k => schedule[k] && schedule[k].includes(":"));
+    
     // If shift window is known, compute relative to shift
     if (shiftStartDate && shiftEndDate) {
-      const entries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
+      const entries = activeBreaks.map((k) => {
         const [h, m] = schedule[k].split(":").map((x) => parseInt(x, 10));
         let start = new Date(
           shiftStartDate.getFullYear(),
@@ -225,7 +229,7 @@ export const BreakScheduler = () => {
       return next || null;
     }
     // Fallback: compute next scheduled break today/tomorrow even without shift window
-    const entries = (["break1", "break2", "break3"] as BreakKey[]).map((k) => {
+    const entries = activeBreaks.map((k) => {
       const [h, m] = schedule[k].split(":").map((x) => parseInt(x, 10));
       let start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
       if (start.getTime() <= now.getTime()) {
@@ -388,6 +392,9 @@ export const BreakScheduler = () => {
     autoStartTimeoutsRef.current = [];
 
     (["break1", "break2", "break3"] as BreakKey[]).forEach((key) => {
+      // Skip empty breaks
+      if (!schedule[key] || !schedule[key].includes(":")) return;
+      
       const now = new Date();
       const [h, m] = schedule[key].split(":").map((x) => parseInt(x, 10));
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
@@ -413,6 +420,9 @@ export const BreakScheduler = () => {
 
   function scheduleNotifications() {
     (["break1", "break2", "break3"] as BreakKey[]).forEach((key) => {
+      // Skip empty breaks
+      if (!schedule[key] || !schedule[key].includes(":")) return;
+      
       const now = new Date();
       const [h, m] = schedule[key].split(":").map((x) => parseInt(x, 10));
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
@@ -543,11 +553,11 @@ export const BreakScheduler = () => {
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Start Time</Label>
                 <div className="text-xl font-mono">
-                  {formatTime12H(schedule[key])}
+                  {schedule[key] && schedule[key].includes(":") ? formatTime12H(schedule[key]) : <span className="text-muted-foreground">-</span>}
                 </div>
               </div>
               <div className="text-xs text-muted-foreground text-center">
-                Automatic Schedule
+                {schedule[key] && schedule[key].includes(":") ? "Automatic Schedule" : "No break scheduled"}
               </div>
             </div>
           ))}

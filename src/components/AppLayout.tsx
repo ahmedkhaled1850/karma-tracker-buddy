@@ -155,11 +155,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
            }
         }
 
-        // Apply shift data if available
+        // Apply shift data if available — use exact values (including empty)
         if (currentShift) {
-          if (currentShift.break1_time) initialSchedule.break1 = currentShift.break1_time;
-          if (currentShift.break2_time) initialSchedule.break2 = currentShift.break2_time;
-          if (currentShift.break3_time) initialSchedule.break3 = currentShift.break3_time;
+          // When a shift exists, override ALL breaks — empty means no break
+          initialSchedule.break1 = currentShift.break1_time || "";
+          initialSchedule.break2 = currentShift.break2_time || "";
+          initialSchedule.break3 = currentShift.break3_time || "";
           
           if (currentShift.break1_duration) initialDurations.break1 = currentShift.break1_duration * 60;
           if (currentShift.break2_duration) initialDurations.break2 = currentShift.break2_duration * 60;
@@ -286,7 +287,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     // Only show "next break" while inside the shift window
     if (nowMs < startMs || nowMs > endMs) return null;
 
-    const breaksInShift = (["break1", "break2", "break3"] as BreakKey[])
+    // Filter out empty breaks
+    const activeBreaks = (["break1", "break2", "break3"] as BreakKey[]).filter(k => breakSchedule[k] && breakSchedule[k].includes(":"));
+
+    const breaksInShift = activeBreaks
       .map((k) => {
         const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
         const dt = new Date(
@@ -334,8 +338,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const end = window?.end ?? null;
 
     if (!start || !end) {
-      // Fallback: no shift configured — show countdown to next scheduled break
-      const upcoming = (['break1', 'break2', 'break3'] as BreakKey[])
+      // Fallback: no shift configured — show countdown to next scheduled break (skip empty ones)
+      const activeBreaks = (['break1', 'break2', 'break3'] as BreakKey[]).filter(k => breakSchedule[k] && breakSchedule[k].includes(":"));
+      const upcoming = activeBreaks
         .map((k) => {
           const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
           let dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
@@ -364,8 +369,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
       return `Next shift in ${formatHMS(Math.max(0, Math.floor((nextStart - nowMs) / 1000)))}`;
     }
 
-    // During shift: countdown to next break (within this shift) or shift end
-    const breaksInShift = (["break1", "break2", "break3"] as BreakKey[])
+    // During shift: countdown to next break (within this shift, skip empty) or shift end
+    const activeBreaks2 = (["break1", "break2", "break3"] as BreakKey[]).filter(k => breakSchedule[k] && breakSchedule[k].includes(":"));
+    const breaksInShift = activeBreaks2
       .map((k) => {
         const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
         const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate(), h || 0, m || 0, 0, 0);
