@@ -1690,7 +1690,6 @@ const Index = () => {
 
           {activeTab === "notes" && (
           <div className="space-y-6 animate-fade-in focus-visible:outline-none">
-              </div>
               <DailyNotesSection performanceId={performanceId} />
           </div>
           )}
