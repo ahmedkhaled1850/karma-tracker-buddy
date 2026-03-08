@@ -1443,34 +1443,64 @@ const Index = () => {
       </div>
 
           {activeTab === "overview" && (
-          <div className="space-y-4 md:space-y-8 animate-fade-in focus-visible:outline-none">
-            {/* Main Performance Cards - CSAT & Karma */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-8 animate-scale-in">
+          <div className="space-y-5 animate-fade-in focus-visible:outline-none">
+            
+            {/* Hero Section: CSAT & Karma side by side */}
+            <div className="grid grid-cols-2 gap-3">
               <PercentageDisplay
-                title="Customer Satisfaction (CSAT)"
+                title="CSAT"
                 percentage={csat}
-                subtitle={`${totalGood} good out of ${totalSurveys} total surveys`}
+                subtitle={`${totalGood} / ${totalSurveys}`}
               />
               <PercentageDisplay
-                title="Karma Score"
+                title="Karma"
                 percentage={karma}
-                subtitle={`${totalGood} good out of ${totalKarmaBase} total interactions`}
+                subtitle={`${totalGood} / ${totalKarmaBase}`}
               />
             </div>
 
-            {/* Daily Target + KPI */}
-            <div className="animate-fade-in space-y-4">
-              <DailyTarget
-                currentGood={totalGood}
-                totalNegatives={totalBad}
-                karmaBad={data.karmaBad}
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                todayGood={todayStats.good}
-                todayBad={todayStats.bad}
-                remainingWorkingDays={remainingWorkingDays}
+            {/* Daily Target - Full width priority card */}
+            <DailyTarget
+              currentGood={totalGood}
+              totalNegatives={totalBad}
+              karmaBad={data.karmaBad}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              todayGood={todayStats.good}
+              todayBad={todayStats.bad}
+              remainingWorkingDays={remainingWorkingDays}
+            />
+
+            {/* Metric Counters - Compact grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <MetricCard
+                title="Good"
+                value={totalGood}
+                onIncrement={() => updateMetric("good", true)}
+                onDecrement={() => updateMetric("good", false)}
+                color="success"
+                icon={ThumbsUp}
               />
-              {/* Compact Phone Bonus KPI */}
+              <MetricCard
+                title="DSAT"
+                value={totalBad}
+                onIncrement={() => updateMetric("bad", true)}
+                onDecrement={() => updateMetric("bad", false)}
+                color="destructive"
+                icon={ThumbsDown}
+              />
+              <MetricCard
+                title="Karma Bad"
+                value={data.karmaBad}
+                onIncrement={() => updateMetric("karmaBad", true)}
+                onDecrement={() => updateMetric("karmaBad", false)}
+                color="warning"
+                icon={AlertTriangle}
+              />
+            </div>
+
+            {/* Secondary Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <PhoneBonusKPI
                 userId={user.id}
                 selectedMonth={selectedMonth}
@@ -1478,59 +1508,19 @@ const Index = () => {
                 csatPercentage={csat}
                 totalSurveys={totalSurveys}
               />
-            </div>
-
-            {/* Survey Conversion Requirement (85%) */}
-            <div className="animate-fade-in">
-              <SurveyConversion
-                userId={user.id}
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-              />
-            </div>
- 
-
-            {/* Metrics Cards */}
-            <div>
-              <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6 bg-gradient-primary bg-clip-text text-transparent">📊 Rating Metrics</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
-                <MetricCard
-                  title="Good Ratings"
-                  value={totalGood}
-                  onIncrement={() => updateMetric("good", true)}
-                  onDecrement={() => updateMetric("good", false)}
-                  color="success"
-                  icon={ThumbsUp}
-                />
-                <MetricCard
-                  title="Bad Ratings (DSAT)"
-                  value={totalBad}
-                  onIncrement={() => updateMetric("bad", true)}
-                  onDecrement={() => updateMetric("bad", false)}
-                  color="destructive"
-                  icon={ThumbsDown}
-                />
-                <MetricCard
-                  title="Karma Bad"
-                  value={data.karmaBad}
-                  onIncrement={() => updateMetric("karmaBad", true)}
-                  onDecrement={() => updateMetric("karmaBad", false)}
-                  color="warning"
-                  icon={AlertTriangle}
-                />
-              </div>
-            </div>
-            
-             {/* FCR Metric */}
-            <div className="animate-fade-in">
               <FCRMetric
                 value={data.fcr}
                 onChange={(value) => setData((prev) => ({ ...prev, fcr: value }))}
                 previousValue={previousMonthData?.fcr}
               />
             </div>
-            
 
+            {/* Survey Conversion */}
+            <SurveyConversion
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+            />
           </div>
           )}
 
