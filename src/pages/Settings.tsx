@@ -38,6 +38,11 @@ export default function Settings() {
   const [autosaveMode, setAutosaveMode] = useState<"manual" | "immediate" | "hourly">("manual");
   const [appTheme, setAppTheme] = useState<string>("dark");
   
+  // Salary State
+  const [baseSalary, setBaseSalary] = useState<string>("");
+  const [taxRate, setTaxRate] = useState<string>("");
+  const [isSalarySaving, setIsSalarySaving] = useState(false);
+  
   // Password State
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
