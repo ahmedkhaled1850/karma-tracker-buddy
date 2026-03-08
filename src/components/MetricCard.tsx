@@ -69,25 +69,27 @@ export const MetricCard = ({ title, value, onIncrement, onDecrement, color = "pr
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onDecrement}
-            disabled={value <= 0}
-            className={`h-8 w-8 rounded-xl ${c.btnDec} transition-all duration-150`}
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onIncrement}
-            className={`h-8 w-8 rounded-xl ${c.btnInc} transition-all duration-150`}
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        {showButtons && onIncrement && onDecrement && (
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onDecrement}
+              disabled={value <= 0}
+              className={`h-8 w-8 rounded-xl ${c.btnDec} transition-all duration-150`}
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onIncrement}
+              className={`h-8 w-8 rounded-xl ${c.btnInc} transition-all duration-150`}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
       </div>
     </Card>
   );
