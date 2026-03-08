@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { ThumbsUp, ThumbsDown, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { DailySummaryCard } from "@/components/DailySummaryCard";
+import { QuickActionsBar } from "@/components/QuickActionsBar";
  
 import { MetricCard } from "@/components/MetricCard";
 import { PercentageDisplay } from "@/components/PercentageDisplay";
