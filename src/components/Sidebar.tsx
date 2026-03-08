@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Settings, LogOut, ChevronLeft, ChevronRight, Calendar, BarChart3, NotebookText, ListChecks, ClipboardList } from "lucide-react";
+import { Settings, LogOut, ChevronLeft, ChevronRight, Calendar, BarChart3, NotebookText, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
