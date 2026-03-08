@@ -437,34 +437,40 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          base_salary: number | null
           break1_time: string | null
           break2_time: string | null
           break3_time: string | null
           created_at: string
           id: string
           shift_start_time: string | null
+          tax_rate: number | null
           updated_at: string
           user_id: string
           work_days: Json | null
         }
         Insert: {
+          base_salary?: number | null
           break1_time?: string | null
           break2_time?: string | null
           break3_time?: string | null
           created_at?: string
           id?: string
           shift_start_time?: string | null
+          tax_rate?: number | null
           updated_at?: string
           user_id: string
           work_days?: Json | null
         }
         Update: {
+          base_salary?: number | null
           break1_time?: string | null
           break2_time?: string | null
           break3_time?: string | null
           created_at?: string
           id?: string
           shift_start_time?: string | null
+          tax_rate?: number | null
           updated_at?: string
           user_id?: string
           work_days?: Json | null
