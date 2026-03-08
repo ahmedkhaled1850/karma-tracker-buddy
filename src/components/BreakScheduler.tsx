@@ -468,81 +468,31 @@ export const BreakScheduler = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6 border-border bg-card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <AlarmClockCheck className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold text-lg">Break Schedule</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            {shiftStartDate && shiftEndDate && (
-              <span className="text-sm text-muted-foreground">
-                {Date.now() < shiftStartDate.getTime() ? `Next shift at ${formatClock(shiftStartDate)}` :
-                 Date.now() <= shiftEndDate.getTime() ? (
-                   nextUp ? `Next: ${BREAK_LABELS[nextUp.key]} at ${formatClock(nextUp.start)}` :
-                   `Shift ends at ${formatClock(shiftEndDate)}`
-                 ) : `Next shift at ${formatClock(new Date(shiftStartDate.getTime() + 24 * 3600 * 1000))}`}
-              </span>
-            )}
-            <Button
-              variant={canNotify ? "secondary" : "default"}
-              size="sm"
-              onClick={requestNotificationPermission}
-            >
-              <Bell className="mr-2 h-4 w-4" />
-              {canNotify ? "Notifications On" : "Enable Notifications"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="space-y-2 rounded-lg border p-4 bg-muted/20">
-            <Label className="text-xs text-muted-foreground">Shift Start Time</Label>
-            <div className="text-2xl font-mono font-medium">
-              {formatTime12H(shiftStart)}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {shiftStartDate ? `Ends at ${shiftEndDate?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "9-hour shift"}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(["break1", "break2", "break3"] as BreakKey[]).map((key) => (
-            <div key={key} className="space-y-3 rounded-lg border p-4 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{BREAK_LABELS[key]}</span>
-                <span className="text-xs text-muted-foreground">
-                  {key === "break2" ? "30 min" : "15 min"}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Start Time</Label>
-                <div className="text-xl font-mono">
-                  {schedule[key] && schedule[key].includes(":") ? formatTime12H(schedule[key]) : <span className="text-muted-foreground">-</span>}
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground text-center">
-                {schedule[key] && schedule[key].includes(":") ? "Automatic Schedule" : "No break scheduled"}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
+    <div className="space-y-4">
+      {/* Active Break Banner */}
       {activeBreak && (
-        <Card className="p-4 border-border bg-card">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TimerReset className="h-5 w-5 text-primary" />
-              <span className="font-medium">{BREAK_LABELS[activeBreak]}</span>
-              <span className="text-lg font-mono font-bold">{formatTimeLeft(timeLeft)}</span>
+        <Card className="p-4 border border-primary/30 bg-primary/5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-muted">
+            <div 
+              className="h-full bg-primary transition-all duration-1000 ease-linear"
+              style={{ width: `${(timeLeft / DURATIONS[activeBreak]) * 100}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/15">
+                <TimerReset className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{BREAK_LABELS[activeBreak]}</p>
+                <p className="text-2xl font-mono font-bold text-primary tabular-nums">{formatTimeLeft(timeLeft)}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <Button
-                variant="secondary"
+                variant="ghost"
                 size="sm"
+                className="h-8 px-3 text-xs bg-muted/50 hover:bg-muted"
                 onClick={() => {
                   stopCountdown();
                   notify("Break Paused", "Timer paused");
@@ -551,8 +501,9 @@ export const BreakScheduler = () => {
                 Pause
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
+                className="h-8 px-3 text-xs bg-destructive/10 text-destructive hover:bg-destructive/20"
                 onClick={() => {
                   const end = Date.now();
                   if (currentStart && currentBreakKey) {
@@ -566,12 +517,111 @@ export const BreakScheduler = () => {
                   localStorage.removeItem("ktb_active_break");
                 }}
               >
-                End Break
+                End
               </Button>
             </div>
           </div>
         </Card>
       )}
+
+      {/* Shift Overview */}
+      <Card className="p-4 border border-border/60">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <AlarmClockCheck className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">Shift & Breaks</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-7 px-2 text-xs rounded-md ${canNotify ? "text-success" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={requestNotificationPermission}
+          >
+            <Bell className="h-3 w-3 mr-1" />
+            {canNotify ? "On" : "Enable"}
+          </Button>
+        </div>
+
+        {/* Timeline Layout */}
+        <div className="relative">
+          {/* Shift info */}
+          {shiftStartDate && shiftEndDate && (
+            <div className="flex items-center gap-3 mb-4 px-2">
+              <div className="flex-1">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Start</p>
+                <p className="text-lg font-mono font-bold tabular-nums">{formatTime12H(shiftStart)}</p>
+              </div>
+              <div className="flex-1 text-center">
+                <div className="h-px bg-border relative">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground bg-card px-1.5">9h</span>
+                </div>
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">End</p>
+                <p className="text-lg font-mono font-bold tabular-nums">{shiftEndDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Next event hint */}
+          {shiftStartDate && shiftEndDate && !activeBreak && (
+            <div className="mb-4 px-3 py-2 rounded-lg bg-muted/50 text-center">
+              <span className="text-xs text-muted-foreground">
+                {Date.now() < shiftStartDate.getTime() ? `Shift starts at ${formatClock(shiftStartDate)}` :
+                 Date.now() <= shiftEndDate.getTime() ? (
+                   nextUp ? `Next: ${BREAK_LABELS[nextUp.key]} at ${formatClock(nextUp.start)}` :
+                   `Shift ends at ${formatClock(shiftEndDate)}`
+                 ) : `Next shift tomorrow`}
+              </span>
+            </div>
+          )}
+
+          {/* Break Cards */}
+          <div className="grid grid-cols-3 gap-2">
+            {(["break1", "break2", "break3"] as BreakKey[]).map((key) => {
+              const isActive = activeBreak === key;
+              const isScheduled = schedule[key] && schedule[key].includes(":");
+              const isNext = nextUp?.key === key;
+              
+              return (
+                <div
+                  key={key}
+                  className={`rounded-lg p-3 text-center transition-all duration-300 border ${
+                    isActive 
+                      ? "border-primary/40 bg-primary/10 shadow-elegant" 
+                      : isNext 
+                        ? "border-primary/20 bg-primary/5" 
+                        : "border-border/40 bg-muted/30"
+                  }`}
+                >
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    {key === "break1" ? "1st" : key === "break2" ? "2nd" : "3rd"}
+                  </p>
+                  {isScheduled ? (
+                    <>
+                      <p className={`text-base font-mono font-bold tabular-nums ${isActive ? "text-primary" : isNext ? "text-primary/80" : "text-foreground"}`}>
+                        {formatTime12H(schedule[key])}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {key === "break2" ? "30 min" : "15 min"}
+                      </p>
+                      {isNext && !isActive && (
+                        <div className="mt-1.5">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold bg-primary/15 text-primary">
+                            NEXT
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground/50">—</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };
