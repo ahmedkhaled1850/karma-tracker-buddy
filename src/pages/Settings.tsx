@@ -389,6 +389,17 @@ export default function Settings() {
                                 />
                               </div>
                               <div className="space-y-2">
+                                <Label>Language Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={languageAllowance}
+                                    onChange={(e) => setLanguageAllowance(e.target.value)}
+                                    placeholder="e.g. 400"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
                                 <Label>Tax & Insurance Rate (%)</Label>
                                 <Input
                                     type="number"
@@ -405,7 +416,7 @@ export default function Settings() {
                             <div className="bg-muted/50 p-4 rounded-lg space-y-1 text-sm">
                                 <p className="font-medium">How Expected Salary is Calculated:</p>
                                 <p className="text-muted-foreground">KPI Bonus = Base Salary × KPI% × Final KPI Score</p>
-                                <p className="text-muted-foreground">Gross = Base + KPI Bonus + Transport + Internet + Senior Bonus</p>
+                                <p className="text-muted-foreground">Gross = Base + KPI Bonus + Transport + Internet + Senior + Language</p>
                                 <p className="text-muted-foreground">Net = Gross × (1 - Tax Rate %)</p>
                             </div>
                             <Button type="submit" disabled={isSalarySaving}>
