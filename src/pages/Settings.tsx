@@ -10,11 +10,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, Save, DollarSign } from "lucide-react";
+import { User, Lock, Save, DollarSign, Mail, Palette, RefreshCw, Bus, Wifi, Award, Languages, Shield, Eye, EyeOff } from "lucide-react";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { useTheme } from "next-themes";
 
-// Schemas
 const usernameSchema = z
   .string()
   .min(3, "Username must be at least 3 characters")
@@ -33,12 +32,10 @@ export default function Settings() {
   const qc = useQueryClient();
   const { theme, setTheme } = useTheme();
   
-  // Profile State
   const [username, setUsername] = useState("");
   const [autosaveMode, setAutosaveMode] = useState<"manual" | "immediate" | "hourly">("manual");
   const [appTheme, setAppTheme] = useState<string>("dark");
   
-  // Salary State
   const [baseSalary, setBaseSalary] = useState<string>("");
   const [taxRate, setTaxRate] = useState<string>("");
   const [kpiPercentage, setKpiPercentage] = useState<string>("70");
@@ -48,13 +45,13 @@ export default function Settings() {
   const [languageAllowance, setLanguageAllowance] = useState<string>("0");
   const [isSalarySaving, setIsSalarySaving] = useState(false);
   
-  // Password State
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   
-  // Fetch Profile
   const { data: profile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -70,11 +67,8 @@ export default function Settings() {
     enabled: !!user?.id,
   });
 
-  // Effect to set initial state
   useEffect(() => {
-    if (profile?.username) {
-        setUsername(profile.username);
-    }
+    if (profile?.username) setUsername(profile.username);
     const metaMode = (user?.user_metadata as Record<string, unknown> | undefined)?.autosaveMode;
     if (metaMode === "immediate" || metaMode === "hourly" || metaMode === "manual") {
       setAutosaveMode(metaMode as any);
@@ -82,7 +76,6 @@ export default function Settings() {
     if (theme) setAppTheme(theme);
   }, [profile, user]);
 
-  // Load salary settings
   useEffect(() => {
     const loadSalary = async () => {
       if (!user?.id) return;
@@ -127,15 +120,10 @@ export default function Settings() {
         .maybeSingle();
 
       if (existing) {
-        const { error } = await supabase
-          .from('user_settings')
-          .update(payload)
-          .eq('user_id', user.id);
+        const { error } = await supabase.from('user_settings').update(payload).eq('user_id', user.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('user_settings')
-          .insert({ user_id: user.id, ...payload });
+        const { error } = await supabase.from('user_settings').insert({ user_id: user.id, ...payload });
         if (error) throw error;
       }
       toast.success("Salary settings saved");
@@ -146,7 +134,6 @@ export default function Settings() {
     }
   };
 
-  // Update Profile Mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (newUsername: string) => {
       const { error } = await supabase
@@ -160,320 +147,226 @@ export default function Settings() {
       toast.success("Profile updated successfully");
     },
     onError: (err: PostgrestError) => {
-      const msg =
-        err?.message?.includes("violates") || err?.code === "23514"
-          ? "Username is invalid based on server rules"
-          : err?.message || "An error occurred while updating";
+      const msg = err?.message?.includes("violates") || err?.code === "23514"
+        ? "Username is invalid based on server rules"
+        : err?.message || "An error occurred while updating";
       toast.error(msg);
     },
   });
 
   const onProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      usernameSchema.parse(username);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
-        return;
-      }
+    try { usernameSchema.parse(username); } catch (err) {
+      if (err instanceof z.ZodError) { toast.error(err.errors[0].message); return; }
     }
-    
     updateProfileMutation.mutate(username);
-    
-    // Update Autosave Preference
-    const { error } = await supabase.auth.updateUser({ 
-        data: { autosaveMode } 
-    });
-    
-    if (error) {
-        toast.error("Failed to save preferences: " + error.message);
-    } else {
-        toast.success("Preferences saved");
-    }
+    const { error } = await supabase.auth.updateUser({ data: { autosaveMode } });
+    if (error) toast.error("Failed to save preferences: " + error.message);
+    else toast.success("Preferences saved");
   };
 
   const onPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      toast.error("New password and confirmation do not match");
-      return;
+    if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return; }
+    if (oldPassword === newPassword) { toast.error("New password must be different"); return; }
+    try { passwordSchema.parse(newPassword); } catch (err) {
+      if (err instanceof z.ZodError) { toast.error(err.errors[0].message); return; }
     }
-
-    if (oldPassword === newPassword) {
-        toast.error("New password must be different from the old password");
-        return;
-    }
-
-    try {
-      passwordSchema.parse(newPassword);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
-        return;
-      }
-    }
-
     setIsPasswordLoading(true);
-
-    // Verify Old Password by signing in
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email || "",
-        password: oldPassword
-    });
-
-    if (signInError) {
-        setIsPasswordLoading(false);
-        toast.error("Incorrect old password");
-        return;
-    }
-
-    // Update Password
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: user?.email || "", password: oldPassword });
+    if (signInError) { setIsPasswordLoading(false); toast.error("Incorrect old password"); return; }
     const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-    
     setIsPasswordLoading(false);
-    
-    if (updateError) {
-      toast.error(updateError.message);
-    } else {
-      toast.success("Password changed successfully");
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    };
+    if (updateError) toast.error(updateError.message);
+    else { toast.success("Password changed successfully"); setOldPassword(""); setNewPassword(""); setConfirmPassword(""); }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-            <p className="text-muted-foreground">Manage your account settings and preferences.</p>
-        </div>
+    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Shield className="h-6 w-6 text-primary" />
+          Settings
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Manage your account, salary, and security preferences.</p>
+      </div>
 
-        <Tabs defaultValue="account" className="space-y-4">
-            <TabsList>
-                <TabsTrigger value="account" className="flex items-center gap-2"><User className="h-4 w-4"/> Account</TabsTrigger>
-                <TabsTrigger value="salary" className="flex items-center gap-2"><DollarSign className="h-4 w-4"/> Salary & KPI</TabsTrigger>
-                <TabsTrigger value="security" className="flex items-center gap-2"><Lock className="h-4 w-4"/> Security</TabsTrigger>
-            </TabsList>
+      <Tabs defaultValue="account" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="account" className="gap-2"><User className="h-4 w-4" /> Account</TabsTrigger>
+          <TabsTrigger value="salary" className="gap-2"><DollarSign className="h-4 w-4" /> Salary</TabsTrigger>
+          <TabsTrigger value="security" className="gap-2"><Lock className="h-4 w-4" /> Security</TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="account">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Profile & Preferences</CardTitle>
-                        <CardDescription>Update your public profile and app preferences.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={onProfileSubmit} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Email</Label>
-                                <Input value={user?.email || ""} disabled />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Username</Label>
-                                <Input
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="Enter username"
-                                    disabled={isProfileLoading || updateProfileMutation.isPending}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Auto-save Mode</Label>
-                                <Select
-                                    value={autosaveMode}
-                                    onValueChange={(val) => setAutosaveMode(val as any)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="manual">Manual only</SelectItem>
-                                        <SelectItem value="immediate">Auto after changes</SelectItem>
-                                        <SelectItem value="hourly">Auto hourly</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Theme</Label>
-                                <Select
-                                    value={appTheme}
-                                    onValueChange={(val) => {
-                                      setAppTheme(val);
-                                      setTheme(val);
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="dark">Dark</SelectItem>
-                                        <SelectItem value="light">Light</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button type="submit" disabled={isProfileLoading || updateProfileMutation.isPending}>
-                                <Save className="mr-2 h-4 w-4" /> Save Changes
-                            </Button>
-                        </form>
-                    </CardContent>
+        {/* Account Tab */}
+        <TabsContent value="account">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Profile & Preferences</CardTitle>
+              <CardDescription>Update your public profile and app preferences.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={onProfileSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /> Email</Label>
+                  <Input value={user?.email || ""} disabled className="bg-muted/50" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /> Username</Label>
+                  <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter username"
+                    disabled={isProfileLoading || updateProfileMutation.isPending} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><RefreshCw className="h-3.5 w-3.5 text-muted-foreground" /> Auto-save</Label>
+                    <Select value={autosaveMode} onValueChange={(val) => setAutosaveMode(val as any)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual only</SelectItem>
+                        <SelectItem value="immediate">Auto after changes</SelectItem>
+                        <SelectItem value="hourly">Auto hourly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><Palette className="h-3.5 w-3.5 text-muted-foreground" /> Theme</Label>
+                    <Select value={appTheme} onValueChange={(val) => { setAppTheme(val); setTheme(val); }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dark">🌙 Dark</SelectItem>
+                        <SelectItem value="light">☀️ Light</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button type="submit" disabled={isProfileLoading || updateProfileMutation.isPending} className="w-full sm:w-auto">
+                  <Save className="mr-2 h-4 w-4" /> Save Changes
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Salary Tab */}
+        <TabsContent value="salary">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Salary & KPI Settings</CardTitle>
+              <CardDescription>Configure your compensation details for salary estimation.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={onSalarySave} className="space-y-5">
+                {/* Primary Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><DollarSign className="h-3.5 w-3.5 text-muted-foreground" /> Base Salary</Label>
+                    <Input type="number" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} placeholder="e.g. 5000" step="0.01" min="0" />
+                    <p className="text-[11px] text-muted-foreground">Gross monthly salary</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">KPI % of Salary</Label>
+                    <Input type="number" value={kpiPercentage} onChange={(e) => setKpiPercentage(e.target.value)} placeholder="70" step="0.01" min="0" max="100" />
+                    <p className="text-[11px] text-muted-foreground">KPI pool percentage</p>
+                  </div>
+                </div>
+
+                {/* Allowances */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success" /> Allowances
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1"><Bus className="h-3 w-3" /> Transport</Label>
+                      <Input type="number" value={transportAllowance} onChange={(e) => setTransportAllowance(e.target.value)} placeholder="0" step="0.01" min="0" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1"><Wifi className="h-3 w-3" /> Internet</Label>
+                      <Input type="number" value={internetAllowance} onChange={(e) => setInternetAllowance(e.target.value)} placeholder="0" step="0.01" min="0" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1"><Award className="h-3 w-3" /> Senior</Label>
+                      <Input type="number" value={seniorBonus} onChange={(e) => setSeniorBonus(e.target.value)} placeholder="0" step="0.01" min="0" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1"><Languages className="h-3 w-3" /> Language</Label>
+                      <Input type="number" value={languageAllowance} onChange={(e) => setLanguageAllowance(e.target.value)} placeholder="0" step="0.01" min="0" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tax */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive" /> Deductions
+                  </h4>
+                  <div className="max-w-xs">
+                    <Label className="text-xs">Tax & Insurance Rate (%)</Label>
+                    <Input type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} placeholder="e.g. 14.5" step="0.01" min="0" max="100" />
+                  </div>
+                </div>
+
+                {/* Formula Info */}
+                <Card className="p-3 bg-muted/30 border-dashed">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">💡 Salary Formula:</p>
+                  <p className="text-[11px] text-muted-foreground">KPI Bonus = Base × KPI% × Score</p>
+                  <p className="text-[11px] text-muted-foreground">Gross = Base + KPI + Allowances</p>
+                  <p className="text-[11px] text-muted-foreground">Net = Gross × (1 - Tax%)</p>
                 </Card>
-            </TabsContent>
 
-            <TabsContent value="salary">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Salary & KPI Settings</CardTitle>
-                        <CardDescription>Enter your base salary and tax rate to calculate your KPI bonus payout.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={onSalarySave} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>Base Salary (Monthly)</Label>
-                                <Input
-                                    type="number"
-                                    value={baseSalary}
-                                    onChange={(e) => setBaseSalary(e.target.value)}
-                                    placeholder="e.g. 5000"
-                                    step="0.01"
-                                    min="0"
-                                />
-                                <p className="text-xs text-muted-foreground">Gross monthly salary before deductions</p>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>KPI Percentage of Salary (%)</Label>
-                                <Input
-                                    type="number"
-                                    value={kpiPercentage}
-                                    onChange={(e) => setKpiPercentage(e.target.value)}
-                                    placeholder="e.g. 70"
-                                    step="0.01"
-                                    min="0"
-                                    max="100"
-                                />
-                                <p className="text-xs text-muted-foreground">KPI pool as a percentage of base salary</p>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Transportation Allowance</Label>
-                                <Input
-                                    type="number"
-                                    value={transportAllowance}
-                                    onChange={(e) => setTransportAllowance(e.target.value)}
-                                    placeholder="e.g. 500"
-                                    step="0.01"
-                                    min="0"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Internet Allowance</Label>
-                                <Input
-                                    type="number"
-                                    value={internetAllowance}
-                                    onChange={(e) => setInternetAllowance(e.target.value)}
-                                    placeholder="e.g. 200"
-                                    step="0.01"
-                                    min="0"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Senior Bonus</Label>
-                                <Input
-                                    type="number"
-                                    value={seniorBonus}
-                                    onChange={(e) => setSeniorBonus(e.target.value)}
-                                    placeholder="e.g. 300"
-                                    step="0.01"
-                                    min="0"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Language Allowance</Label>
-                                <Input
-                                    type="number"
-                                    value={languageAllowance}
-                                    onChange={(e) => setLanguageAllowance(e.target.value)}
-                                    placeholder="e.g. 400"
-                                    step="0.01"
-                                    min="0"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Tax & Insurance Rate (%)</Label>
-                                <Input
-                                    type="number"
-                                    value={taxRate}
-                                    onChange={(e) => setTaxRate(e.target.value)}
-                                    placeholder="e.g. 14.5"
-                                    step="0.01"
-                                    min="0"
-                                    max="100"
-                                />
-                                <p className="text-xs text-muted-foreground">Deducted from total gross salary</p>
-                              </div>
-                            </div>
-                            <div className="bg-muted/50 p-4 rounded-lg space-y-1 text-sm">
-                                <p className="font-medium">How Expected Salary is Calculated:</p>
-                                <p className="text-muted-foreground">KPI Bonus = Base Salary × KPI% × Final KPI Score</p>
-                                <p className="text-muted-foreground">Gross = Base + KPI Bonus + Transport + Internet + Senior + Language</p>
-                                <p className="text-muted-foreground">Net = Gross × (1 - Tax Rate %)</p>
-                            </div>
-                            <Button type="submit" disabled={isSalarySaving}>
-                                <Save className="mr-2 h-4 w-4" /> {isSalarySaving ? "Saving..." : "Save Salary Settings"}
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            </TabsContent>
+                <Button type="submit" disabled={isSalarySaving} className="w-full sm:w-auto">
+                  <Save className="mr-2 h-4 w-4" /> {isSalarySaving ? "Saving..." : "Save Salary Settings"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <TabsContent value="security">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Password</CardTitle>
-                        <CardDescription>Change your password. Please enter your current password for security.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={onPasswordSubmit} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Old Password</Label>
-                                <Input
-                                    type="password"
-                                    value={oldPassword}
-                                    onChange={(e) => setOldPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    disabled={isPasswordLoading}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>New Password</Label>
-                                <Input
-                                    type="password"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    disabled={isPasswordLoading}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Confirm New Password</Label>
-                                <Input
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    disabled={isPasswordLoading}
-                                />
-                            </div>
-                            <Button type="submit" disabled={isPasswordLoading}>
-                                Update Password
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            
-        </Tabs>
+        {/* Security Tab */}
+        <TabsContent value="security">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Change Password</CardTitle>
+              <CardDescription>Enter your current password for verification, then set a new one.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={onPasswordSubmit} className="space-y-4 max-w-md">
+                <div className="space-y-2">
+                  <Label>Current Password</Label>
+                  <div className="relative">
+                    <Input type={showOldPassword ? "text" : "password"} value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)} placeholder="••••••••" disabled={isPasswordLoading} />
+                    <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-10"
+                      onClick={() => setShowOldPassword(!showOldPassword)}>
+                      {showOldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>New Password</Label>
+                  <div className="relative">
+                    <Input type={showNewPassword ? "text" : "password"} value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" disabled={isPasswordLoading} />
+                    <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full w-10"
+                      onClick={() => setShowNewPassword(!showNewPassword)}>
+                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Min 8 chars, with uppercase, lowercase & digit</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirm New Password</Label>
+                  <Input type="password" value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" disabled={isPasswordLoading} />
+                </div>
+                <Button type="submit" disabled={isPasswordLoading} className="w-full sm:w-auto">
+                  <Lock className="mr-2 h-4 w-4" /> Update Password
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
