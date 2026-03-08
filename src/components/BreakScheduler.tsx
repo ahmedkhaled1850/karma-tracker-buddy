@@ -115,9 +115,10 @@ export const BreakScheduler = () => {
         if (dailyShift) {
           const ds = dailyShift as unknown as DailyShift;
           if (ds.shift_start) todayShiftStart = ds.shift_start;
-          if (ds.break1_time) todayBreaks.break1 = ds.break1_time;
-          if (ds.break2_time) todayBreaks.break2 = ds.break2_time;
-          if (ds.break3_time) todayBreaks.break3 = ds.break3_time;
+          // Use daily shift values directly — empty/null means no break scheduled
+          todayBreaks.break1 = ds.break1_time || "";
+          todayBreaks.break2 = ds.break2_time || "";
+          todayBreaks.break3 = ds.break3_time || "";
         } else {
           // Fallback to static schedule
           const staticShift = getStaticShift(todayStr);
