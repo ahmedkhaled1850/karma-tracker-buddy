@@ -17,7 +17,7 @@ import { DailyTarget } from "@/components/DailyTarget";
 import { SmartRatingDialog } from "@/components/SmartRatingDialog";
 import { HoldTicketsSection } from "@/components/HoldTicketsSection";
 import { DailyNotesSection } from "@/components/DailyNotesSection";
-
+import { BreakScheduler } from "@/components/BreakScheduler";
 import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
 import SurveyConversion from "@/components/SurveyConversion";
