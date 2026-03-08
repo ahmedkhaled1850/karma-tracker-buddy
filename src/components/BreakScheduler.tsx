@@ -53,6 +53,7 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
   });
   const [nextCountdown, setNextCountdown] = useState<string>("");
   const [shiftStart, setShiftStart] = useState<string>("");
+  const [shiftEnd, setShiftEnd] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const initialLoadRef = useRef(true);
 
