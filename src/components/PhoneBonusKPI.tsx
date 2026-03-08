@@ -59,6 +59,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   const [absenceDays, setAbsenceDays] = useState(0);
   const [baseSalary, setBaseSalary] = useState<number | null>(null);
   const [taxRate, setTaxRate] = useState<number | null>(null);
+  const [kpiPercentage, setKpiPercentage] = useState<number>(70);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
