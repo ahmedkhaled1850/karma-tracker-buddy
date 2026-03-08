@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Lock, Save } from "lucide-react";
+import { User, Lock, Save, DollarSign } from "lucide-react";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { useTheme } from "next-themes";
 
