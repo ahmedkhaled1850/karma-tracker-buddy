@@ -208,16 +208,16 @@ export const MonthEndForecast = ({
     const insights: { icon: 'up' | 'down' | 'brain' | 'zap'; text: string; type: 'success' | 'warning' | 'info' }[] = [];
 
     if (trendDirection === 'improving') {
-      insights.push({ icon: 'up', text: `أداؤك في تحسن مستمر خلال آخر ${historicalData.length} شهور`, type: 'success' });
+      insights.push({ icon: 'up', text: `Your performance has been improving over the last ${historicalData.length} months`, type: 'success' });
     } else if (trendDirection === 'declining') {
-      insights.push({ icon: 'down', text: `أداؤك بيقل تدريجياً - ركز على تحسين الجودة`, type: 'warning' });
+      insights.push({ icon: 'down', text: `Your performance is gradually declining — focus on quality`, type: 'warning' });
     }
 
     if (paceVsHistory !== null) {
       if (paceVsHistory > 15) {
-        insights.push({ icon: 'zap', text: `سرعتك الحالية أعلى ${Math.round(paceVsHistory)}% من متوسطك التاريخي 🔥`, type: 'success' });
+        insights.push({ icon: 'zap', text: `Current pace is ${Math.round(paceVsHistory)}% above your historical average 🔥`, type: 'success' });
       } else if (paceVsHistory < -15) {
-        insights.push({ icon: 'brain', text: `سرعتك أقل ${Math.round(Math.abs(paceVsHistory))}% من متوسطك - محتاج تزود الـ pace`, type: 'warning' });
+        insights.push({ icon: 'brain', text: `Pace is ${Math.round(Math.abs(paceVsHistory))}% below your average — need to pick it up`, type: 'warning' });
       }
     }
 
