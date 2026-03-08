@@ -1524,7 +1524,7 @@ const Index = () => {
               shiftLabel={nextEvent.label}
             />
 
-            {/* Hero Section: CSAT & Karma side by side */}
+            {/* Hero Section: CSAT & KPI side by side */}
             <div className="grid grid-cols-2 gap-3">
               <PercentageDisplay
                 title="CSAT"
@@ -1532,9 +1532,9 @@ const Index = () => {
                 subtitle={`${totalGood} / ${totalSurveys}`}
               />
               <PercentageDisplay
-                title="Karma"
-                percentage={karma}
-                subtitle={`${totalGood} / ${totalKarmaBase}`}
+                title="KPI"
+                percentage={kpiScore}
+                subtitle="Phone Bonus"
               />
             </div>
 
