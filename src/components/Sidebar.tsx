@@ -38,8 +38,8 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const ce = e as CustomEvent<{ totalGood: number; totalBad: number; karmaBad: number }>;
-      if (ce.detail) setMetrics(ce.detail);
+      const ce = e as CustomEvent<{ totalGood: number; totalBad: number; karmaBad: number; kpiScore?: number }>;
+      if (ce.detail) setMetrics(prev => ({ ...prev, ...ce.detail }));
     };
     window.addEventListener("ktb_metrics_update", handler as EventListener);
     try {
