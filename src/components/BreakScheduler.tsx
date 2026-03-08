@@ -297,6 +297,31 @@ export const BreakScheduler = () => {
     return () => window.clearInterval(id);
   }, [activeBreak, nextUp, shiftStartDate, shiftEndDate]);
 
+  // Broadcast next event info to header
+  useEffect(() => {
+    const getNextEventLabel = () => {
+      if (activeBreak) return BREAK_LABELS[activeBreak];
+      if (!shiftStartDate || !shiftEndDate) {
+        return nextUp ? BREAK_LABELS[nextUp.key] : "";
+      }
+      const now = Date.now();
+      if (now < shiftStartDate.getTime()) return "Shift Start";
+      if (now <= shiftEndDate.getTime()) {
+        return nextUp ? BREAK_LABELS[nextUp.key] : "Shift End";
+      }
+      return "Next Shift";
+    };
+
+    const countdown = activeBreak ? formatTimeLeft(timeLeft) : nextCountdown;
+    const label = getNextEventLabel();
+    const detail = { countdown, label };
+    
+    try {
+      localStorage.setItem("ktb_next_event", JSON.stringify(detail));
+      window.dispatchEvent(new CustomEvent("ktb_next_event", { detail }));
+    } catch {}
+  }, [nextCountdown, activeBreak, timeLeft, nextUp, shiftStartDate, shiftEndDate]);
+
   // Schedule auto-start for breaks
   useEffect(() => {
     if (!loading && !initialLoadRef.current) {
