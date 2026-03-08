@@ -69,14 +69,22 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
     if (isNaN(h) || isNaN(m)) return null;
     const now = new Date();
     
+    // Calculate shift duration from actual end time or default 9h
+    const shiftDurationMs = shiftEnd ? (() => {
+      const [eh, em] = shiftEnd.split(":").map((x) => parseInt(x, 10));
+      let durationMin = (eh * 60 + em) - (h * 60 + m);
+      if (durationMin <= 0) durationMin += 24 * 60; // overnight shift
+      return durationMin * 60 * 1000;
+    })() : 9 * 3600 * 1000;
+    
     const startYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, h, m, 0, 0);
-    const endYesterday = new Date(startYesterday.getTime() + 9 * 3600 * 1000);
+    const endYesterday = new Date(startYesterday.getTime() + shiftDurationMs);
     if (now >= startYesterday && now <= endYesterday) {
         return startYesterday;
     }
 
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-    const endToday = new Date(startToday.getTime() + 9 * 3600 * 1000);
+    const endToday = new Date(startToday.getTime() + shiftDurationMs);
     if (now >= startToday && now <= endToday) {
         return startToday;
     }
@@ -87,13 +95,23 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
     
     const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0, 0);
     return startTomorrow;
-  }, [shiftStart, nextCountdown]);
+  }, [shiftStart, shiftEnd, nextCountdown]);
   
   
   const shiftEndDate = useMemo(() => {
     if (!shiftStartDate) return null;
+    if (shiftEnd) {
+      const [eh, em] = shiftEnd.split(":").map((x) => parseInt(x, 10));
+      const endDate = new Date(shiftStartDate);
+      endDate.setHours(eh, em, 0, 0);
+      // If end is before start, it's next day
+      if (endDate.getTime() <= shiftStartDate.getTime()) {
+        endDate.setDate(endDate.getDate() + 1);
+      }
+      return endDate;
+    }
     return new Date(shiftStartDate.getTime() + 9 * 3600 * 1000);
-  }, [shiftStartDate]);
+  }, [shiftStartDate, shiftEnd]);
   
   const shiftTimeoutsRef = useRef<number[]>([]);
 
