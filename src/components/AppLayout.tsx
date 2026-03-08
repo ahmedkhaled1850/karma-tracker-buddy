@@ -338,8 +338,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const end = window?.end ?? null;
 
     if (!start || !end) {
-      // Fallback: no shift configured — show countdown to next scheduled break
-      const upcoming = (['break1', 'break2', 'break3'] as BreakKey[])
+      // Fallback: no shift configured — show countdown to next scheduled break (skip empty ones)
+      const activeBreaks = (['break1', 'break2', 'break3'] as BreakKey[]).filter(k => breakSchedule[k] && breakSchedule[k].includes(":"));
+      const upcoming = activeBreaks
         .map((k) => {
           const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
           let dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
