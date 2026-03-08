@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { MonthSelector } from "@/components/MonthSelector";
 import { WorkScheduleSettings } from "@/components/WorkScheduleSettings";
 import { DailyShiftSchedule } from "@/components/DailyShiftSchedule";
+import { ExpectedSalary } from "@/components/ExpectedSalary";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, CalendarOff } from "lucide-react";
