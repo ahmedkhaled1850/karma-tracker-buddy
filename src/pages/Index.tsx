@@ -1670,16 +1670,7 @@ const Index = () => {
              </div>
           </div>
           )}
-      </main>
 
-      <footer className="border-t border-border bg-card mt-16 animate-fade-in">
-        <div className="container mx-auto px-6 py-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Big Brother • The big brother who will care for you at work and help you
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">Made with Ahmed Khaled's magic</p>
-        </div>
-      </footer>
       {/* Smart Rating Dialog */}
       <SmartRatingDialog
         isOpen={smartDialogOpen}
