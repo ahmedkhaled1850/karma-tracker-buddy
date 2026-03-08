@@ -5,10 +5,11 @@ import { Plus, Minus, LucideIcon } from "lucide-react";
 interface MetricCardProps {
   title: string;
   value: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
+  onIncrement?: () => void;
+  onDecrement?: () => void;
   color?: "primary" | "destructive" | "warning" | "success";
   icon?: LucideIcon;
+  showButtons?: boolean;
 }
 
 export const MetricCard = ({ title, value, onIncrement, onDecrement, color = "primary", icon: Icon }: MetricCardProps) => {
