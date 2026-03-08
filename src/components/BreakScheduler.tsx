@@ -392,6 +392,9 @@ export const BreakScheduler = () => {
     autoStartTimeoutsRef.current = [];
 
     (["break1", "break2", "break3"] as BreakKey[]).forEach((key) => {
+      // Skip empty breaks
+      if (!schedule[key] || !schedule[key].includes(":")) return;
+      
       const now = new Date();
       const [h, m] = schedule[key].split(":").map((x) => parseInt(x, 10));
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h || 0, m || 0, 0, 0);
