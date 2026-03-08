@@ -41,6 +41,10 @@ export default function Settings() {
   // Salary State
   const [baseSalary, setBaseSalary] = useState<string>("");
   const [taxRate, setTaxRate] = useState<string>("");
+  const [kpiPercentage, setKpiPercentage] = useState<string>("70");
+  const [transportAllowance, setTransportAllowance] = useState<string>("0");
+  const [internetAllowance, setInternetAllowance] = useState<string>("0");
+  const [seniorBonus, setSeniorBonus] = useState<string>("0");
   const [isSalarySaving, setIsSalarySaving] = useState(false);
   
   // Password State
@@ -83,12 +87,17 @@ export default function Settings() {
       if (!user?.id) return;
       const { data } = await supabase
         .from('user_settings')
-        .select('base_salary, tax_rate')
+        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus')
         .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
-        if ((data as any).base_salary != null) setBaseSalary(String((data as any).base_salary));
-        if ((data as any).tax_rate != null) setTaxRate(String((data as any).tax_rate));
+        const d = data as any;
+        if (d.base_salary != null) setBaseSalary(String(d.base_salary));
+        if (d.tax_rate != null) setTaxRate(String(d.tax_rate));
+        if (d.kpi_percentage != null) setKpiPercentage(String(d.kpi_percentage));
+        if (d.transportation_allowance != null) setTransportAllowance(String(d.transportation_allowance));
+        if (d.internet_allowance != null) setInternetAllowance(String(d.internet_allowance));
+        if (d.senior_bonus != null) setSeniorBonus(String(d.senior_bonus));
       }
     };
     loadSalary();
@@ -99,8 +108,14 @@ export default function Settings() {
     if (!user?.id) return;
     setIsSalarySaving(true);
     try {
-      const salaryVal = baseSalary ? parseFloat(baseSalary) : null;
-      const taxVal = taxRate ? parseFloat(taxRate) : null;
+      const payload = {
+        base_salary: baseSalary ? parseFloat(baseSalary) : null,
+        tax_rate: taxRate ? parseFloat(taxRate) : null,
+        kpi_percentage: kpiPercentage ? parseFloat(kpiPercentage) : 70,
+        transportation_allowance: transportAllowance ? parseFloat(transportAllowance) : 0,
+        internet_allowance: internetAllowance ? parseFloat(internetAllowance) : 0,
+        senior_bonus: seniorBonus ? parseFloat(seniorBonus) : 0,
+      } as any;
       
       const { data: existing } = await supabase
         .from('user_settings')
@@ -111,13 +126,13 @@ export default function Settings() {
       if (existing) {
         const { error } = await supabase
           .from('user_settings')
-          .update({ base_salary: salaryVal, tax_rate: taxVal } as any)
+          .update(payload)
           .eq('user_id', user.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('user_settings')
-          .insert({ user_id: user.id, base_salary: salaryVal, tax_rate: taxVal } as any);
+          .insert({ user_id: user.id, ...payload });
         if (error) throw error;
       }
       toast.success("Salary settings saved");
@@ -311,7 +326,8 @@ export default function Settings() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={onSalarySave} className="space-y-4">
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
                                 <Label>Base Salary (Monthly)</Label>
                                 <Input
                                     type="number"
@@ -321,10 +337,56 @@ export default function Settings() {
                                     step="0.01"
                                     min="0"
                                 />
-                                <p className="text-xs text-muted-foreground">Your gross monthly salary before deductions</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Tax Rate (%)</Label>
+                                <p className="text-xs text-muted-foreground">Gross monthly salary before deductions</p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>KPI Percentage of Salary (%)</Label>
+                                <Input
+                                    type="number"
+                                    value={kpiPercentage}
+                                    onChange={(e) => setKpiPercentage(e.target.value)}
+                                    placeholder="e.g. 70"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                />
+                                <p className="text-xs text-muted-foreground">KPI pool as a percentage of base salary</p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Transportation Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={transportAllowance}
+                                    onChange={(e) => setTransportAllowance(e.target.value)}
+                                    placeholder="e.g. 500"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Internet Allowance</Label>
+                                <Input
+                                    type="number"
+                                    value={internetAllowance}
+                                    onChange={(e) => setInternetAllowance(e.target.value)}
+                                    placeholder="e.g. 200"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Senior Bonus</Label>
+                                <Input
+                                    type="number"
+                                    value={seniorBonus}
+                                    onChange={(e) => setSeniorBonus(e.target.value)}
+                                    placeholder="e.g. 300"
+                                    step="0.01"
+                                    min="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Tax & Insurance Rate (%)</Label>
                                 <Input
                                     type="number"
                                     value={taxRate}
@@ -334,13 +396,14 @@ export default function Settings() {
                                     min="0"
                                     max="100"
                                 />
-                                <p className="text-xs text-muted-foreground">Percentage deducted from your KPI bonus (taxes & insurance)</p>
+                                <p className="text-xs text-muted-foreground">Deducted from total gross salary</p>
+                              </div>
                             </div>
                             <div className="bg-muted/50 p-4 rounded-lg space-y-1 text-sm">
-                                <p className="font-medium">How KPI Payout is Calculated:</p>
-                                <p className="text-muted-foreground">KPI Pool = Base Salary × 70%</p>
-                                <p className="text-muted-foreground">Gross Bonus = KPI Pool × Final KPI %</p>
-                                <p className="text-muted-foreground">Net Bonus = Gross Bonus × (1 - Tax Rate %)</p>
+                                <p className="font-medium">How Expected Salary is Calculated:</p>
+                                <p className="text-muted-foreground">KPI Bonus = Base Salary × KPI% × Final KPI Score</p>
+                                <p className="text-muted-foreground">Gross = Base + KPI Bonus + Transport + Internet + Senior Bonus</p>
+                                <p className="text-muted-foreground">Net = Gross × (1 - Tax Rate %)</p>
                             </div>
                             <Button type="submit" disabled={isSalarySaving}>
                                 <Save className="mr-2 h-4 w-4" /> {isSalarySaving ? "Saving..." : "Save Salary Settings"}

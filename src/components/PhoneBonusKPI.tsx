@@ -59,6 +59,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   const [absenceDays, setAbsenceDays] = useState(0);
   const [baseSalary, setBaseSalary] = useState<number | null>(null);
   const [taxRate, setTaxRate] = useState<number | null>(null);
+  const [kpiPercentage, setKpiPercentage] = useState<number>(70);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -102,13 +103,14 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
         // Load salary settings
         const { data: settings } = await supabase
           .from('user_settings')
-          .select('base_salary, tax_rate')
+          .select('base_salary, tax_rate, kpi_percentage')
           .eq('user_id', userId)
           .maybeSingle();
 
         if (settings) {
           setBaseSalary((settings as any).base_salary ?? null);
           setTaxRate((settings as any).tax_rate ?? null);
+          setKpiPercentage((settings as any).kpi_percentage ?? 70);
         }
       } catch (error) {
         console.error('Error loading KPI data:', error);
@@ -134,13 +136,13 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   // KPI payout calculation
   const kpiPayout = useMemo(() => {
     if (baseSalary == null) return null;
-    const kpiPoolGross = baseSalary * 0.7;
+    const kpiPoolGross = baseSalary * (kpiPercentage / 100);
     const tax = taxRate != null ? taxRate / 100 : 0;
     const kpiPoolNet = kpiPoolGross * (1 - tax);
     const grossBonus = kpiPoolGross * (finalBonus / 100);
     const netBonus = grossBonus * (1 - tax);
     return { kpiPoolNet, grossBonus, netBonus };
-  }, [baseSalary, taxRate, finalBonus]);
+  }, [baseSalary, taxRate, kpiPercentage, finalBonus]);
 
   if (loading) {
     return (
