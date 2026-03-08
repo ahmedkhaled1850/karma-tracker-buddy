@@ -53,37 +53,36 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
     // Analyze by specific date
     const dateStats: Record<string, { good: number; bad: number }> = {};
 
-    // First, calculate NET changes per date+field to remove edit noise
+    // Step 1: Calculate NET changes per date+field to know true totals
     const netByDateField: Record<string, number> = {};
+    const positiveByDateField: Record<string, number> = {};
     changes.forEach((change) => {
       const key = `${change.change_date}|${change.field_name}`;
       netByDateField[key] = (netByDateField[key] || 0) + change.change_amount;
+      if (change.change_amount > 0) {
+        positiveByDateField[key] = (positiveByDateField[key] || 0) + change.change_amount;
+      }
     });
 
-    // Build a deduplicated list: one entry per date+field with the net amount
-    // Use the LAST change entry for time info
-    const lastChangeByDateField: Record<string, DailyChange> = {};
+    // Step 2: Process individual positive changes, scaled by (net/totalPositive) ratio
+    // This preserves hourly distribution while keeping correct totals
     changes.forEach((change) => {
-      const key = `${change.change_date}|${change.field_name}`;
-      lastChangeByDateField[key] = change;
-    });
+      if (change.change_amount <= 0) return;
 
-    Object.entries(netByDateField).forEach(([key, netAmount]) => {
-      if (netAmount <= 0) return; // skip fields with zero or negative net
-      const change = lastChangeByDateField[key];
+      const key = `${change.change_date}|${change.field_name}`;
+      const net = netByDateField[key] || 0;
+      const totalPositive = positiveByDateField[key] || 1;
+      if (net <= 0) return; // field was net-negative or zero, skip entirely
+
+      const scaleFactor = net / totalPositive; // scales down if there were corrections
+      const scaledAmount = change.change_amount * scaleFactor;
+
       const isGenesys = change.field_name === 'genesys_good' || change.field_name === 'genesys_bad';
       const isKarma = change.field_name === 'karma_bad';
       if (!includeGenesys && isGenesys) return;
       if (!includeKarma && isKarma) return;
       const isGood = change.field_name === 'good' || change.field_name === 'genesys_good';
       const isBad = change.field_name === 'bad' || change.field_name === 'genesys_bad' || change.field_name === 'karma_bad';
-
-      let weight = 1;
-      try {
-        const d = new Date(change.change_date);
-        const daysAgo = Math.floor((new Date().getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-        weight = daysAgo <= 7 ? 1.5 : 1;
-      } catch {}
 
       // Get time from change_time or created_at
       let hour = 12;
@@ -96,22 +95,22 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
       const date = new Date(change.change_date);
       const dayOfWeek = date.getDay();
 
-      // Update hour stats
+      // Update hour stats (no weight multiplier — raw accurate numbers)
       if (!hourStats[hour]) hourStats[hour] = { good: 0, bad: 0, total: 0 };
-      if (isGood) hourStats[hour].good += netAmount * weight;
-      if (isBad) hourStats[hour].bad += netAmount * weight;
-      hourStats[hour].total += netAmount * weight;
+      if (isGood) hourStats[hour].good += scaledAmount;
+      if (isBad) hourStats[hour].bad += scaledAmount;
+      hourStats[hour].total += scaledAmount;
 
       // Update day of week stats
       if (!dayOfWeekStats[dayOfWeek]) dayOfWeekStats[dayOfWeek] = { good: 0, total: 0 };
-      if (isGood) dayOfWeekStats[dayOfWeek].good += netAmount * weight;
-      dayOfWeekStats[dayOfWeek].total += netAmount * weight;
+      if (isGood) dayOfWeekStats[dayOfWeek].good += scaledAmount;
+      dayOfWeekStats[dayOfWeek].total += scaledAmount;
 
       // Update date stats
       const dateKey = change.change_date;
       if (!dateStats[dateKey]) dateStats[dateKey] = { good: 0, bad: 0 };
-      if (isGood) dateStats[dateKey].good += netAmount;
-      if (isBad) dateStats[dateKey].bad += netAmount;
+      if (isGood) dateStats[dateKey].good += scaledAmount;
+      if (isBad) dateStats[dateKey].bad += scaledAmount;
     });
 
     // Find best hours (top 3)
