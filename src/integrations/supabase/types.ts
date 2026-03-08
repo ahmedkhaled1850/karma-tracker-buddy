@@ -188,34 +188,43 @@ export type Database = {
       }
       genesys_tickets: {
         Row: {
+          channel: string | null
           created_at: string
           customer_phone: string | null
           id: string
+          note: string | null
           performance_id: string
           rating_score: number | null
           ticket_date: string
+          ticket_id: string | null
           ticket_link: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          channel?: string | null
           created_at?: string
           customer_phone?: string | null
           id?: string
+          note?: string | null
           performance_id: string
           rating_score?: number | null
           ticket_date?: string
+          ticket_id?: string | null
           ticket_link: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          channel?: string | null
           created_at?: string
           customer_phone?: string | null
           id?: string
+          note?: string | null
           performance_id?: string
           rating_score?: number | null
           ticket_date?: string
+          ticket_id?: string | null
           ticket_link?: string
           updated_at?: string
           user_id?: string | null
