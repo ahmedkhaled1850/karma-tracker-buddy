@@ -361,7 +361,6 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   )}
-                  {isToday && <Badge className="text-[9px] px-1 py-0">Today</Badge>}
                 </div>
               </div>
             </Card>
