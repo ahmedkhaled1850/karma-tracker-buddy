@@ -106,8 +106,8 @@ const Index = () => {
       window.removeEventListener("ktb_tab_change", customHandler as EventListener);
     };
   }, []);
+import { BreakScheduler } from "@/components/BreakScheduler";
 
- 
   // Smart rating dialog state
   const [smartDialogOpen, setSmartDialogOpen] = useState(false);
   const [smartDialogType, setSmartDialogType] = useState<'good' | 'bad' | null>(null);
