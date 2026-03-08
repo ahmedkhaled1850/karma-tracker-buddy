@@ -1443,9 +1443,9 @@ const Index = () => {
       </div>
 
           {activeTab === "overview" && (
-          <div className="space-y-8 animate-fade-in focus-visible:outline-none">
+          <div className="space-y-4 md:space-y-8 animate-fade-in focus-visible:outline-none">
             {/* Main Performance Cards - CSAT & Karma */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-scale-in">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-8 animate-scale-in">
               <PercentageDisplay
                 title="Customer Satisfaction (CSAT)"
                 percentage={csat}
