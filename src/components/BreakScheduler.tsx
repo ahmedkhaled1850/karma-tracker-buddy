@@ -474,7 +474,50 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
-  if (loading) {
+  const openLateBreakDialog = (key: BreakKey) => {
+    const now = new Date();
+    setLateBreakKey(key);
+    setLateBreakActualTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    setLateBreakDialog(true);
+  };
+
+  const handleSaveLateBreak = async () => {
+    if (!lateBreakKey || !lateBreakActualTime || !user?.id) return;
+    setLateBreakSaving(true);
+    try {
+      const scheduledTime = schedule[lateBreakKey];
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      
+      const noteContent = `⏰ Late Break — ${BREAK_LABELS[lateBreakKey]}\n` +
+        `📅 Date: ${todayStr}\n` +
+        `🕐 Scheduled: ${formatTime12H(scheduledTime)}\n` +
+        `🕐 Actual: ${formatTime12H(lateBreakActualTime)}\n` +
+        `📝 Logged at: ${timeStr}`;
+
+      // Save to daily_notes if we have a performanceId
+      if (performanceId) {
+        const { error } = await supabase.from("daily_notes").insert({
+          performance_id: performanceId,
+          note_date: todayStr,
+          content: noteContent,
+          user_id: user.id,
+        });
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["dailyNotes"] });
+      }
+
+      toast.success("Late break logged in notes!");
+      setLateBreakDialog(false);
+    } catch (error) {
+      console.error("Error saving late break:", error);
+      toast.error("Failed to save late break note");
+    } finally {
+      setLateBreakSaving(false);
+    }
+  };
+
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
