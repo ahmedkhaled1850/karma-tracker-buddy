@@ -1581,14 +1581,6 @@ const Index = () => {
                   remainingWorkingDays={remainingWorkingDays}
                 />
 
-                {/* Secondary Info */}
-                <PhoneBonusKPI
-                  userId={user.id}
-                  selectedMonth={selectedMonth}
-                  selectedYear={selectedYear}
-                  csatPercentage={csat}
-                  totalSurveys={totalSurveys}
-                />
 
                 {/* Survey Conversion */}
                 <SurveyConversion
