@@ -133,6 +133,14 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
     return (base * absenceGate) / 100;
   }, [productivityScore, csatScore, absenceGate]);
 
+  // Broadcast KPI score
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent("ktb_kpi_score", { detail: finalBonus }));
+      localStorage.setItem("ktb_kpi_score", String(finalBonus));
+    } catch {}
+  }, [finalBonus]);
+
   // KPI payout calculation
   const kpiPayout = useMemo(() => {
     if (baseSalary == null) return null;
