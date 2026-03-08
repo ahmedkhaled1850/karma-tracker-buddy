@@ -176,6 +176,8 @@ export default function WorkSchedule() {
     };
     loadKpi();
   }, [user?.id, selectedMonth, selectedYear, totalAbsence]);
+
+  return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
       <Card className="p-6 bg-card border-border">
         <div className="flex items-center justify-between">
