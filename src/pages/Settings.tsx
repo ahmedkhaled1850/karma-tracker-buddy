@@ -87,12 +87,17 @@ export default function Settings() {
       if (!user?.id) return;
       const { data } = await supabase
         .from('user_settings')
-        .select('base_salary, tax_rate')
+        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus')
         .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
-        if ((data as any).base_salary != null) setBaseSalary(String((data as any).base_salary));
-        if ((data as any).tax_rate != null) setTaxRate(String((data as any).tax_rate));
+        const d = data as any;
+        if (d.base_salary != null) setBaseSalary(String(d.base_salary));
+        if (d.tax_rate != null) setTaxRate(String(d.tax_rate));
+        if (d.kpi_percentage != null) setKpiPercentage(String(d.kpi_percentage));
+        if (d.transportation_allowance != null) setTransportAllowance(String(d.transportation_allowance));
+        if (d.internet_allowance != null) setInternetAllowance(String(d.internet_allowance));
+        if (d.senior_bonus != null) setSeniorBonus(String(d.senior_bonus));
       }
     };
     loadSalary();
@@ -103,8 +108,14 @@ export default function Settings() {
     if (!user?.id) return;
     setIsSalarySaving(true);
     try {
-      const salaryVal = baseSalary ? parseFloat(baseSalary) : null;
-      const taxVal = taxRate ? parseFloat(taxRate) : null;
+      const payload = {
+        base_salary: baseSalary ? parseFloat(baseSalary) : null,
+        tax_rate: taxRate ? parseFloat(taxRate) : null,
+        kpi_percentage: kpiPercentage ? parseFloat(kpiPercentage) : 70,
+        transportation_allowance: transportAllowance ? parseFloat(transportAllowance) : 0,
+        internet_allowance: internetAllowance ? parseFloat(internetAllowance) : 0,
+        senior_bonus: seniorBonus ? parseFloat(seniorBonus) : 0,
+      } as any;
       
       const { data: existing } = await supabase
         .from('user_settings')
@@ -115,13 +126,13 @@ export default function Settings() {
       if (existing) {
         const { error } = await supabase
           .from('user_settings')
-          .update({ base_salary: salaryVal, tax_rate: taxVal } as any)
+          .update(payload)
           .eq('user_id', user.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('user_settings')
-          .insert({ user_id: user.id, base_salary: salaryVal, tax_rate: taxVal } as any);
+          .insert({ user_id: user.id, ...payload });
         if (error) throw error;
       }
       toast.success("Salary settings saved");
