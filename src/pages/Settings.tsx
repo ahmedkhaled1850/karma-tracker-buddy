@@ -45,6 +45,7 @@ export default function Settings() {
   const [transportAllowance, setTransportAllowance] = useState<string>("0");
   const [internetAllowance, setInternetAllowance] = useState<string>("0");
   const [seniorBonus, setSeniorBonus] = useState<string>("0");
+  const [languageAllowance, setLanguageAllowance] = useState<string>("0");
   const [isSalarySaving, setIsSalarySaving] = useState(false);
   
   // Password State
