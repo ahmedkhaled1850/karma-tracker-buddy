@@ -41,6 +41,10 @@ export default function Settings() {
   // Salary State
   const [baseSalary, setBaseSalary] = useState<string>("");
   const [taxRate, setTaxRate] = useState<string>("");
+  const [kpiPercentage, setKpiPercentage] = useState<string>("70");
+  const [transportAllowance, setTransportAllowance] = useState<string>("0");
+  const [internetAllowance, setInternetAllowance] = useState<string>("0");
+  const [seniorBonus, setSeniorBonus] = useState<string>("0");
   const [isSalarySaving, setIsSalarySaving] = useState(false);
   
   // Password State
