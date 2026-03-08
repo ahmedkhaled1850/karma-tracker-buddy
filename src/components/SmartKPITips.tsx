@@ -18,25 +18,50 @@ interface SmartKPITipsProps {
 interface Tip {
   icon: React.ReactNode;
   text: string;
-  priority: number; // lower = more important
+  priority: number;
   type: "calls" | "csat" | "survey" | "celebration";
 }
 
 export const SmartKPITips = ({
+  userId,
+  selectedMonth,
+  selectedYear,
   kpiScore,
-  avgDailyCalls,
-  totalCalls,
-  recordedDays,
   csatPercentage,
   totalGood,
   totalSurveys,
   surveyConversionRate = 100,
   remainingWorkDays,
 }: SmartKPITipsProps) => {
+  const [totalCalls, setTotalCalls] = useState(0);
+  const [recordedDays, setRecordedDays] = useState(0);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!userId) return;
+      const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${lastDay}`;
+
+      const { data } = await supabase
+        .from('daily_survey_calls')
+        .select('total_calls')
+        .eq('user_id', userId)
+        .gte('call_date', startDate)
+        .lte('call_date', endDate);
+
+      const valid = (data || []).filter(r => (r.total_calls || 0) > 0);
+      setTotalCalls(valid.reduce((s, r) => s + (r.total_calls || 0), 0));
+      setRecordedDays(valid.length);
+    };
+    load();
+  }, [userId, selectedMonth, selectedYear]);
+
+  const avgDailyCalls = useMemo(() => recordedDays > 0 ? totalCalls / recordedDays : 0, [totalCalls, recordedDays]);
+
   const tips = useMemo(() => {
     const result: Tip[] = [];
 
-    // Celebration tips
     if (kpiScore >= 100) {
       result.push({
         icon: <span className="text-lg">🏆</span>,
@@ -48,27 +73,27 @@ export const SmartKPITips = ({
     }
 
     // Productivity tips
-    if (avgDailyCalls < 26) {
-      const needed = Math.ceil(26 * Math.max(1, recordedDays) - totalCalls);
+    if (avgDailyCalls < 26 && recordedDays > 0) {
+      const needed = Math.ceil(26 * recordedDays - totalCalls);
       result.push({
         icon: <Phone className="h-4 w-4 text-destructive" />,
-        text: `⚠️ Average is ${avgDailyCalls.toFixed(1)} calls/day — below 26 threshold. Need ${needed} more calls to reach 50% tier.`,
+        text: `⚠️ Avg ${avgDailyCalls.toFixed(1)} calls/day — need ${needed} more to reach 50% tier`,
         priority: 1,
         type: "calls",
       });
-    } else if (avgDailyCalls < 28) {
-      const needed = Math.ceil(28 * Math.max(1, recordedDays) - totalCalls);
+    } else if (avgDailyCalls < 28 && recordedDays > 0) {
+      const needed = Math.ceil(28 * recordedDays - totalCalls);
       result.push({
         icon: <Phone className="h-4 w-4 text-warning" />,
-        text: `📞 ${needed} more calls to jump from 50% → 75% productivity tier (need 28/day avg)`,
+        text: `📞 ${needed} more calls → 75% productivity (28/day)`,
         priority: 2,
         type: "calls",
       });
-    } else if (avgDailyCalls < 30) {
-      const needed = Math.ceil(30 * Math.max(1, recordedDays) - totalCalls);
+    } else if (avgDailyCalls < 30 && recordedDays > 0) {
+      const needed = Math.ceil(30 * recordedDays - totalCalls);
       result.push({
         icon: <Phone className="h-4 w-4 text-primary" />,
-        text: `🔥 Just ${needed} more calls to reach 100% productivity! (need 30/day avg)`,
+        text: `🔥 Just ${needed} more calls → 100% productivity!`,
         priority: 2,
         type: "calls",
       });
@@ -76,48 +101,47 @@ export const SmartKPITips = ({
 
     // CSAT tips
     if (csatPercentage < 87 && totalSurveys > 0) {
-      const neededForTier = Math.ceil((0.87 * totalSurveys - totalGood) / (1 - 0.87));
+      const needed = Math.max(0, Math.ceil((0.87 * totalSurveys - totalGood) / (1 - 0.87)));
       result.push({
         icon: <SmilePlus className="h-4 w-4 text-destructive" />,
-        text: `⚠️ CSAT ${csatPercentage.toFixed(1)}% is below 87%. Need ${Math.max(0, neededForTier)} more good ratings to reach 50% tier.`,
+        text: `⚠️ CSAT ${csatPercentage.toFixed(1)}% — need ${needed} good ratings → 50% tier`,
         priority: 1,
         type: "csat",
       });
     } else if (csatPercentage < 90 && totalSurveys > 0) {
-      const neededForTier = Math.ceil((0.90 * totalSurveys - totalGood) / (1 - 0.90));
+      const needed = Math.max(0, Math.ceil((0.90 * totalSurveys - totalGood) / (1 - 0.90)));
       result.push({
         icon: <SmilePlus className="h-4 w-4 text-warning" />,
-        text: `😊 ${Math.max(0, neededForTier)} more good ratings to jump CSAT from 50% → 75% tier (need 90%)`,
+        text: `😊 ${needed} more good ratings → 90% CSAT (75% tier)`,
         priority: 2,
         type: "csat",
       });
     } else if (csatPercentage < 93 && totalSurveys > 0) {
-      const neededForTier = Math.ceil((0.93 * totalSurveys - totalGood) / (1 - 0.93));
+      const needed = Math.max(0, Math.ceil((0.93 * totalSurveys - totalGood) / (1 - 0.93)));
       result.push({
         icon: <SmilePlus className="h-4 w-4 text-primary" />,
-        text: `🎯 Just ${Math.max(0, neededForTier)} more good ratings to hit 93% CSAT = 100% score!`,
+        text: `🎯 ${needed} more good ratings → 93% CSAT = 100% score!`,
         priority: 2,
         type: "csat",
       });
     }
 
-    // Survey conversion tips
     if (surveyConversionRate < 85) {
       result.push({
         icon: <Target className="h-4 w-4 text-warning" />,
-        text: `📋 Survey conversion at ${surveyConversionRate.toFixed(0)}% — push to 85%+ to stay compliant`,
+        text: `📋 Survey conversion ${surveyConversionRate.toFixed(0)}% — push to 85%+`,
         priority: 3,
         type: "survey",
       });
     }
 
-    // Pace tips
     if (remainingWorkDays && remainingWorkDays > 0 && avgDailyCalls > 0 && avgDailyCalls < 30) {
-      const callsNeededPerDay = Math.ceil((30 * (recordedDays + remainingWorkDays) - totalCalls) / remainingWorkDays);
-      if (callsNeededPerDay <= 35) {
+      const totalDays = recordedDays + remainingWorkDays;
+      const callsPerDay = Math.ceil((30 * totalDays - totalCalls) / remainingWorkDays);
+      if (callsPerDay <= 35) {
         result.push({
           icon: <TrendingUp className="h-4 w-4 text-success" />,
-          text: `📈 At ${callsNeededPerDay} calls/day for remaining ${remainingWorkDays} days, you'll hit 100% productivity!`,
+          text: `📈 ${callsPerDay} calls/day for ${remainingWorkDays} days → 100% productivity`,
           priority: 4,
           type: "calls",
         });
