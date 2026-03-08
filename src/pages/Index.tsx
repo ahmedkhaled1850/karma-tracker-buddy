@@ -24,6 +24,9 @@ import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
 import SurveyConversion from "@/components/SurveyConversion";
 import { PhoneBonusKPI } from "@/components/PhoneBonusKPI";
+import { SmartKPITips } from "@/components/SmartKPITips";
+import { StreaksMilestones } from "@/components/StreaksMilestones";
+import { DailyKPITarget } from "@/components/DailyKPITarget";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ThreeMonthPerformance, MonthMetrics } from "@/components/ThreeMonthPerformance";
@@ -1554,6 +1557,39 @@ const Index = () => {
                 subtitle={`${totalGood} / ${totalSurveys}`}
               />
             </div>
+
+            {/* Streaks & Milestones */}
+            <StreaksMilestones
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              todayGood={todayStats.good}
+              dailyTarget={dailyTargetForSummary}
+            />
+
+            {/* Daily KPI Target */}
+            <DailyKPITarget
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              csatPercentage={csat}
+              totalGood={totalGood}
+              totalSurveys={totalSurveys}
+              remainingWorkDays={remainingWorkingDays}
+              kpiScore={kpiScore}
+            />
+
+            {/* Smart Tips */}
+            <SmartKPITips
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              kpiScore={kpiScore}
+              csatPercentage={csat}
+              totalGood={totalGood}
+              totalSurveys={totalSurveys}
+              remainingWorkDays={remainingWorkingDays}
+            />
 
             {/* Survey Conversion - Secondary priority, always visible */}
             <SurveyConversion
