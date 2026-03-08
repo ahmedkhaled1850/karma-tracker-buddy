@@ -36,7 +36,7 @@ interface DayStats {
 export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
   const [includeGenesys, setIncludeGenesys] = useState(true);
   const [includeKarma, setIncludeKarma] = useState(true);
-  const MIN_SAMPLES = 5;
+  const MIN_SAMPLES = 2;
   const reminderTimeouts = useRef<number[]>([]);
   useEffect(() => {
     return () => { reminderTimeouts.current.forEach((id) => window.clearTimeout(id)); reminderTimeouts.current = []; };
