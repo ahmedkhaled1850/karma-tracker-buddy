@@ -635,7 +635,9 @@ export const BreakScheduler = ({ performanceId }: BreakSchedulerProps) => {
               </div>
               <div className="flex-1 text-center">
                 <div className="h-px bg-border relative">
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground bg-card px-1.5">9h</span>
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground bg-card px-1.5">
+                    {shiftStartDate && shiftEndDate ? `${((shiftEndDate.getTime() - shiftStartDate.getTime()) / 3600000).toFixed(1).replace('.0', '')}h` : '9h'}
+                  </span>
                 </div>
               </div>
               <div className="flex-1 text-right">
