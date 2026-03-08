@@ -12,7 +12,7 @@ interface MetricCardProps {
   showButtons?: boolean;
 }
 
-export const MetricCard = ({ title, value, onIncrement, onDecrement, color = "primary", icon: Icon }: MetricCardProps) => {
+export const MetricCard = ({ title, value, onIncrement, onDecrement, color = "primary", icon: Icon, showButtons = true }: MetricCardProps) => {
   const colorMap = {
     primary: { 
       text: "text-primary", 
