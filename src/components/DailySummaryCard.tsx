@@ -16,8 +16,7 @@ export const DailySummaryCard = ({
   dailyTarget,
   shiftTimeLeft,
   shiftLabel,
-  karma,
-}: DailySummaryCardProps) => {
+}: Omit<DailySummaryCardProps, 'karma'>) => {
   const remaining = Math.max(0, Math.ceil(dailyTarget) - todayGood);
   const progress = dailyTarget > 0 ? Math.min(100, (todayGood / dailyTarget) * 100) : 100;
   const isComplete = remaining <= 0;
