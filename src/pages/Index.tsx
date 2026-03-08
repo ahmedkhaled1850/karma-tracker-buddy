@@ -1581,14 +1581,6 @@ const Index = () => {
                   remainingWorkingDays={remainingWorkingDays}
                 />
 
-                {/* Secondary Info */}
-                <PhoneBonusKPI
-                  userId={user.id}
-                  selectedMonth={selectedMonth}
-                  selectedYear={selectedYear}
-                  csatPercentage={csat}
-                  totalSurveys={totalSurveys}
-                />
 
                 {/* Survey Conversion */}
                 <SurveyConversion
@@ -1748,16 +1740,12 @@ const Index = () => {
           {activeTab === "notes" && (
           <div className="space-y-6 animate-fade-in focus-visible:outline-none">
               <DailyNotesSection performanceId={performanceId} />
-          </div>
-          )}
 
-          {activeTab === "log" && (
-          <div className="space-y-6 animate-fade-in focus-visible:outline-none">
-             {/* Daily Change Log */}
-             <div className="space-y-6">
-               <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">📋 Site Log History</h2>
-               <DailyChangeLog performanceId={performanceId} />
-             </div>
+              {/* Daily Change Log */}
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">📋 Site Log History</h2>
+                <DailyChangeLog performanceId={performanceId} />
+              </div>
           </div>
           )}
 
