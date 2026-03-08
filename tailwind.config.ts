@@ -74,6 +74,7 @@ export default {
         'gradient-success': 'var(--gradient-success)',
         'gradient-card': 'var(--gradient-card)',
         'gradient-hero': 'var(--gradient-hero)',
+        'gradient-surface': 'var(--gradient-surface)',
       },
       boxShadow: {
         'sm': 'var(--shadow-sm)',
@@ -83,6 +84,7 @@ export default {
         'elegant': 'var(--shadow-elegant)',
         'glow': 'var(--shadow-glow)',
         'success': 'var(--shadow-success)',
+        'card': 'var(--shadow-card)',
       },
       transitionProperty: {
         'smooth': 'var(--transition-smooth)',
