@@ -378,9 +378,9 @@ const Index = () => {
             ratingScore: t.rating_score,
             customerPhone: t.customer_phone || "",
             ticketDate: t.ticket_date,
-            ticketId: (t as any).ticket_id || "",
-            channel: ((t as any).channel as "Phone" | "Chat" | "Email") || "Phone",
-            note: (t as any).note || "",
+            ticketId: t.ticket_id || "",
+            channel: (t.channel as "Phone" | "Chat" | "Email") || "Phone",
+            note: t.note || "",
           }));
           
           // Auto-generate missing good ticket records for regular good ratings

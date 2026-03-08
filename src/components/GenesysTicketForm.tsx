@@ -175,76 +175,18 @@ export const GenesysTicketForm = ({
         </DialogContent>
       </Dialog>
 
-      {/* Good Ticket Summary - shows ALL good tickets */}
-      {totalGood > 0 && (
+      {/* Genesys Tickets Detail */}
+      {tickets.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Good Ticket Summary</span>
+              <span>Genesys Ticket Details</span>
               <Badge variant="secondary" className="text-sm">
                 {totalGood} total good
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Channel Distribution Controls */}
-            <div className="p-4 bg-muted/50 rounded-xl border border-border">
-              <h4 className="text-sm font-semibold text-foreground mb-3">
-                📊 Good Ratings by Channel
-              </h4>
-              <p className="text-xs text-muted-foreground mb-4">
-                Distribute your {totalGood} good ratings across channels to track per-channel performance
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {(["phone", "chat", "email"] as const).map((ch) => {
-                  const Icon = channelIcons[ch];
-                  
-                  return (
-                    <div key={ch} className="text-center p-3 bg-background rounded-lg border shadow-sm space-y-2">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Icon className="h-4 w-4 text-primary" />
-                        <span className="text-xs font-medium capitalize">{ch}</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleChannelUpdate(ch, -1)}
-                          disabled={goodByChannel[ch] <= 0}
-                        >
-                          -
-                        </Button>
-                        <span className="text-lg font-bold text-foreground min-w-[2rem]">
-                          {goodByChannel[ch]}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleChannelUpdate(ch, 1)}
-                          disabled={channelDistribution.total >= totalGood}
-                        >
-                          +
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {channelDistribution.total !== totalGood && (
-                <p className="text-xs text-warning mt-2 text-center">
-                  ⚠️ {totalGood - channelDistribution.total} good ratings not assigned to a channel yet
-                </p>
-              )}
-              {channelDistribution.total === totalGood && (
-                <p className="text-xs text-success mt-2 text-center">
-                  ✅ All good ratings distributed across channels
-                </p>
-              )}
-            </div>
-
-            {/* Genesys Tickets Detail (existing tracked tickets) */}
             {tickets.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-2">
