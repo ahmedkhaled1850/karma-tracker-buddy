@@ -1439,26 +1439,26 @@ const Index = () => {
     return needed / Math.max(1, days);
   }, [totalGood, totalBad, data.karmaBad, remainingWorkingDays]);
 
-  // Smart notifications for target achievement
-  const lastNotifiedRef = useRef<string>("");
+  // Motivational alerts for daily target
   useEffect(() => {
-    const key = `${todayStats.good}-${Math.ceil(dailyTargetForSummary)}`;
-    if (key === lastNotifiedRef.current) return;
-    
-    const target = Math.ceil(dailyTargetForSummary);
-    if (target <= 0) return;
-    
-    if (todayStats.good === target && todayStats.good > 0) {
-      toast.success("🎯 You reached your daily target! Keep going!");
-      lastNotifiedRef.current = key;
-    } else if (todayStats.good > 0 && target - todayStats.good === 2) {
-      toast("⚡ Just 2 more ratings to hit your daily target!");
-      lastNotifiedRef.current = key;
-    } else if (todayStats.good > 0 && target - todayStats.good === 1) {
-      toast("🔥 One more rating to hit your target!");
-      lastNotifiedRef.current = key;
+    const result = checkDailyTargetAlerts(todayStats.good, dailyTargetForSummary);
+    if (result) {
+      setCelebrationType(result);
+      setCelebrationTrigger(true);
     }
-  }, [todayStats.good, dailyTargetForSummary]);
+  }, [todayStats.good, dailyTargetForSummary, checkDailyTargetAlerts]);
+
+  // KPI milestone celebrations
+  useEffect(() => {
+    if (kpiScore > 0 && prevKpiRef.current !== kpiScore) {
+      const result = checkKPIAlerts(kpiScore, prevKpiRef.current);
+      if (result) {
+        setCelebrationType(result);
+        setCelebrationTrigger(true);
+      }
+      prevKpiRef.current = kpiScore;
+    }
+  }, [kpiScore, checkKPIAlerts]);
 
 
   const exportToCSV = () => {
