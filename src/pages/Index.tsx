@@ -1632,54 +1632,77 @@ const Index = () => {
           )}
 
           {activeTab === "analytics" && (
-          <div className="space-y-6 animate-fade-in focus-visible:outline-none">
-            {/* Analytics Section */}
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">📈 Analytics & Progress</h2>
+          <div className="space-y-5 animate-fade-in focus-visible:outline-none">
 
-              {/* FCR Score */}
-              <FCRMetric
-                value={data.fcr}
-                onChange={(value) => setData((prev) => ({ ...prev, fcr: value }))}
-                previousValue={previousMonthData?.fcr}
+            {/* Quick Stats Row */}
+            <div className="grid grid-cols-2 gap-3">
+              <PercentageDisplay
+                title="CSAT"
+                percentage={csat}
+                subtitle={`${totalGood} / ${totalSurveys}`}
               />
+              <PercentageDisplay
+                title="Karma"
+                percentage={karma}
+                subtitle={`${totalGood} / ${totalKarmaBase}`}
+              />
+            </div>
 
-              {/* Phone Bonus KPI */}
-              <PhoneBonusKPI
-                userId={user.id}
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                csatPercentage={csat}
-                totalSurveys={totalSurveys}
-              />
-              <div className="animate-fade-in">
-                <MonthComparison
-                  currentMonth={{
-                    good: data.good,
-                    bad: data.bad,
-                    genesysGood: data.genesysGood,
-                    genesysBad: data.genesysBad,
-                    karmaBad: data.karmaBad,
-                    fcr: data.fcr,
-                  }}
-                  previousMonth={previousMonthData}
-                  currentMonthName={new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "long" })}
-                  previousMonthName={new Date(selectedYear, selectedMonth - 1).toLocaleString("en-US", { month: "long" })}
+            {/* Section: Performance Inputs */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                Performance Inputs
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FCRMetric
+                  value={data.fcr}
+                  onChange={(value) => setData((prev) => ({ ...prev, fcr: value }))}
+                  previousValue={previousMonthData?.fcr}
+                />
+                <PhoneBonusKPI
+                  userId={user.id}
+                  selectedMonth={selectedMonth}
+                  selectedYear={selectedYear}
+                  csatPercentage={csat}
+                  totalSurveys={totalSurveys}
                 />
               </div>
+            </div>
 
-              {/* Weekly Progress */}
+            {/* Section: Trends & Comparison */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                Trends & Comparison
+              </h3>
+              <MonthComparison
+                currentMonth={{
+                  good: data.good,
+                  bad: data.bad,
+                  genesysGood: data.genesysGood,
+                  genesysBad: data.genesysBad,
+                  karmaBad: data.karmaBad,
+                  fcr: data.fcr,
+                }}
+                previousMonth={previousMonthData}
+                currentMonthName={new Date(selectedYear, selectedMonth).toLocaleString("en-US", { month: "short" })}
+                previousMonthName={new Date(selectedYear, selectedMonth - 1).toLocaleString("en-US", { month: "short" })}
+              />
               <WeeklyProgress
                 selectedMonth={selectedMonth}
                 selectedYear={selectedYear}
                 weeklyData={weeklyData}
                 currentKarma={karma}
               />
-              
-              {/* Best Productive Time */}
-              <BestProductiveTime changes={monthlyChangeLog} />
+            </div>
 
-              {/* Month-end Forecast */}
+            {/* Section: Forecasts & Insights */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                Forecasts & Insights
+              </h3>
               <MonthEndForecast
                 currentGood={totalGood}
                 currentBad={totalBad}
@@ -1690,27 +1713,34 @@ const Index = () => {
                 selectedMonth={selectedMonth}
                 selectedYear={selectedYear}
               />
+              <BestProductiveTime changes={monthlyChangeLog} />
+            </div>
 
-              {/* Daily Change Log - Moved to separate tab */}
-              {/* <DailyChangeLog performanceId={performanceId} /> */}
+            {/* Section: Channel Breakdown */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                Channel Breakdown
+              </h3>
+              <ChannelAnalytics
+                goodRatings={goodByChannelWithGenesys}
+                badRatings={badByChannel}
+                karmaRatings={karmaByChannel}
+              />
+            </div>
 
-              {/* Channel Analytics */}
-                <ChannelAnalytics
-                  goodRatings={goodByChannelWithGenesys}
-                  badRatings={badByChannel}
-                  karmaRatings={karmaByChannel}
-                />
-
-              {/* 3-Month Performance */}
-              <div className="space-y-6 animate-fade-in mt-6">
-                <h2 className="text-2xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">📅 3-Month Performance</h2>
-                <ThreeMonthPerformance
-                  metrics={threeMonthsMetrics}
-                  availableMonths={availableMonthsForComparison}
-                  selectedMonths={selectedThreeMonths}
-                  onMonthsChange={setSelectedThreeMonths}
-                />
-              </div>
+            {/* Section: Multi-Month */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                Multi-Month Performance
+              </h3>
+              <ThreeMonthPerformance
+                metrics={threeMonthsMetrics}
+                availableMonths={availableMonthsForComparison}
+                selectedMonths={selectedThreeMonths}
+                onMonthsChange={setSelectedThreeMonths}
+              />
             </div>
           </div>
           )}
