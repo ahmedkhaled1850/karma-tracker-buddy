@@ -53,15 +53,31 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
     // Analyze by specific date
     const dateStats: Record<string, { good: number; bad: number }> = {};
 
+    // First, calculate NET changes per date+field to remove edit noise
+    const netByDateField: Record<string, number> = {};
     changes.forEach((change) => {
+      const key = `${change.change_date}|${change.field_name}`;
+      netByDateField[key] = (netByDateField[key] || 0) + change.change_amount;
+    });
+
+    // Build a deduplicated list: one entry per date+field with the net amount
+    // Use the LAST change entry for time info
+    const lastChangeByDateField: Record<string, DailyChange> = {};
+    changes.forEach((change) => {
+      const key = `${change.change_date}|${change.field_name}`;
+      lastChangeByDateField[key] = change;
+    });
+
+    Object.entries(netByDateField).forEach(([key, netAmount]) => {
+      if (netAmount <= 0) return; // skip fields with zero or negative net
+      const change = lastChangeByDateField[key];
       const isGenesys = change.field_name === 'genesys_good' || change.field_name === 'genesys_bad';
       const isKarma = change.field_name === 'karma_bad';
       if (!includeGenesys && isGenesys) return;
       if (!includeKarma && isKarma) return;
       const isGood = change.field_name === 'good' || change.field_name === 'genesys_good';
       const isBad = change.field_name === 'bad' || change.field_name === 'genesys_bad' || change.field_name === 'karma_bad';
-      const amount = Math.max(0, change.change_amount);
-      if (amount === 0) return;
+
       let weight = 1;
       try {
         const d = new Date(change.change_date);
@@ -70,33 +86,32 @@ export const BestProductiveTime = ({ changes }: BestProductiveTimeProps) => {
       } catch {}
 
       // Get time from change_time or created_at
-      let hour = 12; // default
+      let hour = 12;
       if (change.change_time) {
         hour = parseInt(change.change_time.split(':')[0], 10);
       } else if (change.created_at) {
         hour = new Date(change.created_at).getHours();
       }
 
-      // Get day of week
       const date = new Date(change.change_date);
       const dayOfWeek = date.getDay();
 
       // Update hour stats
       if (!hourStats[hour]) hourStats[hour] = { good: 0, bad: 0, total: 0 };
-      if (isGood) hourStats[hour].good += amount * weight;
-      if (isBad) hourStats[hour].bad += amount * weight;
-      hourStats[hour].total += amount * weight;
+      if (isGood) hourStats[hour].good += netAmount * weight;
+      if (isBad) hourStats[hour].bad += netAmount * weight;
+      hourStats[hour].total += netAmount * weight;
 
       // Update day of week stats
       if (!dayOfWeekStats[dayOfWeek]) dayOfWeekStats[dayOfWeek] = { good: 0, total: 0 };
-      if (isGood) dayOfWeekStats[dayOfWeek].good += amount * weight;
-      dayOfWeekStats[dayOfWeek].total += amount * weight;
+      if (isGood) dayOfWeekStats[dayOfWeek].good += netAmount * weight;
+      dayOfWeekStats[dayOfWeek].total += netAmount * weight;
 
       // Update date stats
       const dateKey = change.change_date;
       if (!dateStats[dateKey]) dateStats[dateKey] = { good: 0, bad: 0 };
-      if (isGood) dateStats[dateKey].good += amount;
-      if (isBad) dateStats[dateKey].bad += amount;
+      if (isGood) dateStats[dateKey].good += netAmount;
+      if (isBad) dateStats[dateKey].bad += netAmount;
     });
 
     // Find best hours (top 3)
