@@ -1581,11 +1581,6 @@ const Index = () => {
                 tickets={genesysTickets}
                 onTicketsChange={setGenesysTickets}
                 totalGood={totalGood}
-                goodByChannel={data.goodByChannel}
-                onGoodByChannelChange={(channels) => {
-                  setData(prev => ({ ...prev, goodByChannel: channels }));
-                  setTimeout(() => { if (!isSaving) saveToDatabase(); }, 0);
-                }}
               />
 
               {/* Tickets Table */}
