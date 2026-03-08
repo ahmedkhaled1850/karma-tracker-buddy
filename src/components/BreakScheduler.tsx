@@ -553,11 +553,11 @@ export const BreakScheduler = () => {
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Start Time</Label>
                 <div className="text-xl font-mono">
-                  {formatTime12H(schedule[key])}
+                  {schedule[key] && schedule[key].includes(":") ? formatTime12H(schedule[key]) : <span className="text-muted-foreground">-</span>}
                 </div>
               </div>
               <div className="text-xs text-muted-foreground text-center">
-                Automatic Schedule
+                {schedule[key] && schedule[key].includes(":") ? "Automatic Schedule" : "No break scheduled"}
               </div>
             </div>
           ))}

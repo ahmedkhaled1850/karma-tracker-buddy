@@ -369,8 +369,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
       return `Next shift in ${formatHMS(Math.max(0, Math.floor((nextStart - nowMs) / 1000)))}`;
     }
 
-    // During shift: countdown to next break (within this shift) or shift end
-    const breaksInShift = (["break1", "break2", "break3"] as BreakKey[])
+    // During shift: countdown to next break (within this shift, skip empty) or shift end
+    const activeBreaks2 = (["break1", "break2", "break3"] as BreakKey[]).filter(k => breakSchedule[k] && breakSchedule[k].includes(":"));
+    const breaksInShift = activeBreaks2
       .map((k) => {
         const [h, m] = breakSchedule[k].split(":").map((x) => parseInt(x, 10));
         const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate(), h || 0, m || 0, 0, 0);
