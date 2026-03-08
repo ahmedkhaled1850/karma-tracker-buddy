@@ -1581,10 +1581,10 @@ const Index = () => {
 
             {/* Smart Tips */}
             <SmartKPITips
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
               kpiScore={kpiScore}
-              avgDailyCalls={0}
-              totalCalls={0}
-              recordedDays={0}
               csatPercentage={csat}
               totalGood={totalGood}
               totalSurveys={totalSurveys}
