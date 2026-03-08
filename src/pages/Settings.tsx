@@ -17,8 +17,7 @@ import { useTheme } from "next-themes";
 const usernameSchema = z
   .string()
   .min(3, "Username must be at least 3 characters")
-  .max(20, "Username must be under 20 characters")
-  .regex(/^[A-Za-z0-9_]+$/, "Only letters, numbers and underscore are allowed");
+  .max(20, "Username must be under 20 characters");
 
 const passwordSchema = z
   .string()
