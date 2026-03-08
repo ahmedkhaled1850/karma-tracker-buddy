@@ -50,10 +50,10 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
   }, []);
 
   const tabLinks = [
-    { name: "Overview 📊", tab: "overview", icon: BarChart3 },
-    { name: "Tickets 🎫", tab: "tickets", icon: ListChecks },
-    { name: "Analytics 📈", tab: "analytics", icon: BarChart3 },
-    { name: "Notes & Log 📝", tab: "notes", icon: NotebookText },
+    { name: "Overview", emoji: "📊", tab: "overview", icon: BarChart3 },
+    { name: "Tickets", emoji: "🎫", tab: "tickets", icon: ListChecks },
+    { name: "Analytics", emoji: "📈", tab: "analytics", icon: BarChart3 },
+    { name: "Notes & Log", emoji: "📝", tab: "notes", icon: NotebookText },
   ];
 
   const pageLinks = [
@@ -71,9 +71,9 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
 
   const SidebarContent = () => (
     <>
-      <div className={cn("p-4 border-b flex items-center", collapsed ? "justify-center" : "justify-between")}>
+      <div className={cn("px-4 py-5 border-b border-sidebar-border flex items-center", collapsed ? "justify-center" : "justify-between")}>
         {!collapsed && (
-          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent whitespace-nowrap">
+          <h1 className="text-lg font-extrabold text-gradient-primary whitespace-nowrap tracking-tight">
             Big Brother
           </h1>
         )}
@@ -81,33 +81,33 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
             variant="ghost" 
             size="icon" 
             onClick={toggleCollapsed} 
-            className={cn("hidden md:flex", collapsed && "h-8 w-8")}
+            className={cn("hidden md:flex rounded-xl hover:bg-sidebar-accent", collapsed && "h-8 w-8")}
         >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>
       
-      <div className="flex-1 overflow-y-auto py-6 px-2 space-y-1">
+      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         <div className="space-y-1">
-          <div>
+          <div className="mb-3">
             {collapsed ? (
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="w-full px-2">
-                      <div className="text-[12px] font-medium flex flex-col items-center gap-1">
+                      <div className="text-[11px] font-semibold flex flex-col items-center gap-1.5">
                         <div className="leading-none">
                           <span className="text-muted-foreground">CSAT</span>
-                          <span className="mx-1 text-muted-foreground">—</span>
-                          <span className="text-foreground">{(() => {
+                          <span className="mx-1 text-muted-foreground">·</span>
+                          <span className="text-foreground font-bold">{(() => {
                             const total = metrics.totalGood + metrics.totalBad;
                             return total > 0 ? `${((metrics.totalGood / total) * 100).toFixed(1)}%` : "100%";
                           })()}</span>
                         </div>
                         <div className="leading-none">
                           <span className="text-muted-foreground">Karma</span>
-                          <span className="mx-1 text-muted-foreground">—</span>
-                          <span className="text-foreground">{(() => {
+                          <span className="mx-1 text-muted-foreground">·</span>
+                          <span className="text-foreground font-bold">{(() => {
                             const base = metrics.totalGood + metrics.totalBad + metrics.karmaBad;
                             return base > 0 ? `${((metrics.totalGood / base) * 100).toFixed(1)}%` : "100%";
                           })()}</span>
@@ -119,7 +119,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                 </Tooltip>
               </TooltipProvider>
             ) : (
-              <div className="w-full">
+              <div className="w-full space-y-1">
                 <GoalsSection
                   currentValue={metrics.totalGood}
                   totalNegatives={metrics.totalBad}
@@ -137,6 +137,10 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
               </div>
             )}
           </div>
+
+          {/* Divider */}
+          <div className="h-px bg-sidebar-border mx-1 mb-2" />
+
           {tabLinks.map((tl) => {
             const Icon = tl.icon;
             const isActive = isOnHome && activeTab === tl.tab;
@@ -148,8 +152,10 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                       <TooltipTrigger asChild>
                         <Link to="/" onClick={() => handleTabClick(tl.tab)}>
                           <Button variant="ghost" className={cn(
-                            "w-full px-2 justify-center",
-                            isActive && "bg-primary/10 text-primary border border-primary/20"
+                            "w-full px-2 justify-center rounded-xl transition-all duration-200",
+                            isActive 
+                              ? "bg-primary/10 text-primary shadow-sm" 
+                              : "text-sidebar-foreground hover:bg-sidebar-accent"
                           )}>
                             <Icon className="h-5 w-5" />
                           </Button>
@@ -161,11 +167,14 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
                 ) : (
                   <Link to="/" onClick={() => handleTabClick(tl.tab)}>
                     <Button variant="ghost" className={cn(
-                      "w-full justify-start gap-3 transition-all",
-                      isActive && "bg-primary/10 text-primary border border-primary/20 font-medium"
+                      "w-full justify-start gap-3 rounded-xl transition-all duration-200 h-10",
+                      isActive 
+                        ? "bg-primary/10 text-primary font-semibold shadow-sm" 
+                        : "text-sidebar-foreground hover:bg-sidebar-accent font-medium"
                     )}>
-                      <Icon className="h-5 w-5" />
-                      <span>{tl.name}</span>
+                      <Icon className="h-4.5 w-4.5" />
+                      <span className="text-sm">{tl.name}</span>
+                      <span className="text-sm ml-auto">{tl.emoji}</span>
                     </Button>
                   </Link>
                 )}
@@ -174,21 +183,26 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
           })}
         </div>
 
+        {/* Divider */}
+        <div className="h-px bg-sidebar-border mx-1 my-2" />
+
         {pageLinks.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.href;
           
           const LinkButton = (
             <Button
-                variant={isActive ? "secondary" : "ghost"}
+                variant="ghost"
                 className={cn(
-                  "w-full justify-start mb-1 transition-all",
-                  isActive && "bg-primary/10 text-primary border border-primary/20 font-medium",
+                  "w-full justify-start mb-0.5 rounded-xl transition-all duration-200 h-10",
+                  isActive 
+                    ? "bg-primary/10 text-primary font-semibold shadow-sm" 
+                    : "text-sidebar-foreground hover:bg-sidebar-accent font-medium",
                   collapsed ? "px-2 justify-center" : "gap-3"
                 )}
             >
-                <Icon className="h-5 w-5" />
-                {!collapsed && <span>{link.name}</span>}
+                <Icon className="h-4.5 w-4.5" />
+                {!collapsed && <span className="text-sm">{link.name}</span>}
             </Button>
           );
 
@@ -211,25 +225,23 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
             </div>
           );
         })}
-
-
       </div>
 
-      <div className="p-4 border-t">
+      <div className="p-3 border-t border-sidebar-border">
         {collapsed ? (
             <TooltipProvider delayDuration={0}>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" className="w-full" onClick={signOut}>
-                            <LogOut className="h-5 w-5" />
+                        <Button variant="ghost" size="icon" className="w-full rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={signOut}>
+                            <LogOut className="h-4.5 w-4.5" />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">Sign Out</TooltipContent>
                 </Tooltip>
             </TooltipProvider>
         ) : (
-            <Button variant="outline" className="w-full justify-start gap-3" onClick={signOut}>
-            <LogOut className="h-5 w-5" />
+            <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={signOut}>
+            <LogOut className="h-4.5 w-4.5" />
             Sign Out
             </Button>
         )}
@@ -240,7 +252,7 @@ export function Sidebar({ collapsed = false, toggleCollapsed }: SidebarProps) {
   return (
     <div 
         className={cn(
-            "hidden md:flex h-screen flex-col border-r bg-card fixed left-0 top-0 z-50 transition-all duration-300",
+            "hidden md:flex h-screen flex-col border-r border-sidebar-border bg-sidebar fixed left-0 top-0 z-50 transition-all duration-300",
             collapsed ? "w-16" : "w-64"
         )}
     >
