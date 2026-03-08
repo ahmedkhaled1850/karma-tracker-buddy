@@ -1690,6 +1690,10 @@ const Index = () => {
 
           {activeTab === "notes" && (
           <div className="space-y-6 animate-fade-in focus-visible:outline-none">
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Break Time ⏱️</h3>
+                <BreakScheduler />
+              </div>
               <DailyNotesSection performanceId={performanceId} />
           </div>
           )}
