@@ -21,60 +21,61 @@ export const DailySummaryCard = ({
   const isComplete = remaining <= 0;
 
   return (
-    <Card className="p-4 bg-gradient-hero border border-primary/15 overflow-hidden relative">
-      {/* Subtle background accent */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-12 -mt-12 blur-2xl" />
+    <Card className="p-5 bg-gradient-hero border border-primary/10 overflow-hidden relative shadow-card">
+      {/* Decorative elements */}
+      <div className="absolute -top-16 -right-16 w-40 h-40 bg-primary/[0.03] rounded-full blur-2xl" />
+      <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-success/[0.03] rounded-full blur-2xl" />
       
-      <div className="relative grid grid-cols-3 gap-3">
+      <div className="relative grid grid-cols-3 gap-4">
         {/* Today's Ratings */}
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Zap className="h-3.5 w-3.5 text-success" />
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Today</span>
+        <div className="text-center space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/8">
+            <Zap className="h-3 w-3 text-success" />
+            <span className="text-[10px] font-bold text-success uppercase tracking-wider">Today</span>
           </div>
-          <div className="flex items-baseline justify-center gap-1">
-            <span className="text-2xl font-bold text-success tabular-nums">{todayGood}</span>
+          <div className="flex items-baseline justify-center gap-1.5">
+            <span className="text-3xl font-extrabold text-success tabular-nums">{todayGood}</span>
             {todayBad > 0 && (
-              <span className="text-sm text-destructive font-medium">-{todayBad}</span>
+              <span className="text-sm text-destructive font-bold">-{todayBad}</span>
             )}
           </div>
         </div>
 
         {/* Remaining Target */}
-        <div className="text-center border-x border-border/50 px-2">
-          <div className="flex items-center justify-center gap-1 mb-1">
+        <div className="text-center space-y-1.5 border-x border-border/40 px-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: isComplete ? 'hsl(var(--success) / 0.08)' : 'hsl(var(--primary) / 0.08)' }}>
             {isComplete ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              <CheckCircle2 className="h-3 w-3 text-success" />
             ) : (
-              <Target className="h-3.5 w-3.5 text-primary" />
+              <Target className="h-3 w-3 text-primary" />
             )}
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isComplete ? "text-success" : "text-primary"}`}>
               {isComplete ? "Done!" : "Left"}
             </span>
           </div>
-          <span className={`text-2xl font-bold tabular-nums ${isComplete ? "text-success" : "text-primary"}`}>
+          <span className={`text-3xl font-extrabold tabular-nums block ${isComplete ? "text-success" : "text-primary"}`}>
             {isComplete ? "✓" : remaining}
           </span>
         </div>
 
         {/* Shift Timer */}
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Clock className="h-3.5 w-3.5 text-warning" />
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+        <div className="text-center space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-warning/8">
+            <Clock className="h-3 w-3 text-warning" />
+            <span className="text-[10px] font-bold text-warning uppercase tracking-wider truncate max-w-[60px]">
               {shiftLabel || "Shift"}
             </span>
           </div>
-          <span className="text-lg font-bold font-mono text-warning tabular-nums">
+          <span className="text-xl font-extrabold font-mono text-warning tabular-nums block">
             {shiftTimeLeft || "--:--"}
           </span>
         </div>
       </div>
 
-      {/* Mini progress bar */}
-      <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+      {/* Progress bar */}
+      <div className="mt-4 h-2 bg-muted/60 rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${isComplete ? "bg-success" : "bg-primary"}`}
+          className={`h-full rounded-full transition-all duration-700 ease-out ${isComplete ? "bg-gradient-success" : "bg-gradient-primary"}`}
           style={{ width: `${progress}%` }}
         />
       </div>
