@@ -1,25 +1,19 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "./Sidebar";
-import { BarChart3, ListChecks, NotebookText, ClipboardList, Calendar, Settings, LogOut, Plus, Minus, Clock } from "lucide-react";
+import { MobileBottomNav } from "./MobileBottomNav";
+import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
+import { Plus, Minus, Clock, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
-
-const MOBILE_TABS = [
-  { tab: "overview", label: "Overview", icon: BarChart3 },
-  { tab: "tickets", label: "Tickets", icon: ListChecks },
-  { tab: "analytics", label: "Analytics", icon: BarChart3 },
-  { tab: "notes", label: "Notes", icon: NotebookText },
-  { tab: "log", label: "Log", icon: ClipboardList },
-];
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, signOut, isLoading } = useAuth();
@@ -96,7 +90,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (location.pathname !== "/") navigate("/");
   };
 
-  const isOnHome = location.pathname === "/";
+  // Swipe navigation for mobile
+  useSwipeNavigation(activeTab, handleTabClick);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -112,8 +107,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
       >
         {/* Mobile Top Bar */}
         <header className="md:hidden border-b border-border glass sticky top-0 z-40">
-          <div className="px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
+          <div className="px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Avatar className="h-7 w-7 border-2 border-primary/20">
                 <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
               </Avatar>
@@ -121,16 +116,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 Big Brother
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {nextEvent.countdown && nextEvent.label && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/8 border border-primary/10">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/8 border border-primary/10 mr-1">
                   <Clock className="h-3 w-3 text-primary" />
                   <span className="text-[10px] font-mono font-bold text-primary">{nextEvent.countdown}</span>
                 </div>
               )}
               <Button 
                 size="icon" 
-                className="h-7 w-7 rounded-lg bg-success/10 text-success hover:bg-success/20 active:scale-95 transition-all"
+                className="h-7 w-7 rounded-lg bg-success/10 text-success hover:bg-success/20 active:scale-90 transition-all"
                 onClick={() => {
                   try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "good" })); } catch {}
                 }}
@@ -139,7 +134,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </Button>
               <Button 
                 size="icon" 
-                className="h-7 w-7 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-95 transition-all"
+                className="h-7 w-7 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-90 transition-all"
                 onClick={() => {
                   try { window.dispatchEvent(new CustomEvent("ktb_quick_rating", { detail: "bad" })); } catch {}
                 }}
@@ -200,84 +195,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 py-5 md:px-8 md:py-8 pb-20 md:pb-8 animate-fade-in">
+        <main className="flex-1 px-3 py-4 md:px-8 md:py-8 pb-20 md:pb-8 animate-fade-in">
           {children}
         </main>
       </div>
 
       {/* Mobile Bottom Navigation */}
-      {isOnHome && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border safe-area-bottom">
-          <div className="flex items-center justify-around px-2 py-2">
-            {MOBILE_TABS.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.tab;
-              return (
-                <button
-                  key={item.tab}
-                  onClick={() => handleTabClick(item.tab)}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 py-1.5 px-2.5 rounded-xl transition-all duration-200 min-w-0 flex-1",
-                    isActive 
-                      ? "text-primary bg-primary/10" 
-                      : "text-muted-foreground hover:text-foreground active:scale-95"
-                  )}
-                >
-                  <Icon className={cn("h-5 w-5 transition-colors", isActive && "text-primary")} />
-                  <span className={cn(
-                    "text-[10px] font-medium truncate transition-colors",
-                    isActive ? "text-primary font-bold" : ""
-                  )}>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      )}
-
-      {/* Mobile bottom nav for non-home pages */}
-      {!isOnHome && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border safe-area-bottom">
-          <div className="flex items-center justify-around px-2 py-2">
-            <button
-              onClick={() => navigate("/")}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl text-muted-foreground hover:text-foreground active:scale-95 transition-all flex-1"
-            >
-              <BarChart3 className="h-5 w-5" />
-              <span className="text-[10px] font-medium">Home</span>
-            </button>
-            <Link to="/work-schedule" className="flex-1">
-              <button
-                className={cn(
-                  "flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl w-full transition-all duration-200",
-                  location.pathname === "/work-schedule" ? "text-primary bg-primary/10" : "text-muted-foreground"
-                )}
-              >
-                <Calendar className="h-5 w-5" />
-                <span className="text-[10px] font-medium">Schedule</span>
-              </button>
-            </Link>
-            <Link to="/settings" className="flex-1">
-              <button
-                className={cn(
-                  "flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl w-full transition-all duration-200",
-                  location.pathname === "/settings" ? "text-primary bg-primary/10" : "text-muted-foreground"
-                )}
-              >
-                <Settings className="h-5 w-5" />
-                <span className="text-[10px] font-medium">Settings</span>
-              </button>
-            </Link>
-            <button
-              onClick={signOut}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl text-muted-foreground hover:text-foreground active:scale-95 transition-all flex-1"
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="text-[10px] font-medium">Logout</span>
-            </button>
-          </div>
-        </nav>
-      )}
+      <MobileBottomNav activeTab={activeTab} onTabClick={handleTabClick} />
 
       {showLoader && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[60] flex items-center justify-center">
