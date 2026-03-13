@@ -163,7 +163,16 @@ const Index = () => {
   });
   const [threeMonthsMetrics, setThreeMonthsMetrics] = useState<MonthMetrics[]>([]);
 
-  // 3-month comparison UI state
+  // Refs to always have latest data for saveToDatabase
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const genesysTicketsRef = useRef(genesysTickets);
+  genesysTicketsRef.current = genesysTickets;
+  const previousDataRef = useRef(previousData);
+  previousDataRef.current = previousData;
+  const performanceIdRef = useRef(performanceId);
+  performanceIdRef.current = performanceId;
+
   const [includeKarmaInCSAT] = useState<boolean>(false);
 
   // Available months for selection (last 12 months)
