@@ -944,6 +944,12 @@ const Index = () => {
     savingRef.current = true;
     setIsSaving(true);
 
+    // Snapshot latest values from refs
+    const currentData = dataRef.current;
+    const currentGenesysTickets = genesysTicketsRef.current;
+    const currentPreviousData = previousDataRef.current;
+    const currentPerformanceId = performanceIdRef.current;
+
     try {
       if (!user) return;
 
@@ -952,18 +958,18 @@ const Index = () => {
         .from("performance_data")
         .upsert(
           {
-            id: performanceId ?? undefined,
+            id: currentPerformanceId ?? undefined,
             year: selectedYear,
             month: selectedMonth,
-            good: data.good,
-            bad: data.bad,
-            karma_bad: data.karmaBad,
-            genesys_good: data.genesysGood,
-            genesys_bad: data.genesysBad,
-            fcr: data.fcr,
-            good_phone: data.goodByChannel.phone,
-            good_chat: data.goodByChannel.chat,
-            good_email: data.goodByChannel.email,
+            good: currentData.good,
+            bad: currentData.bad,
+            karma_bad: currentData.karmaBad,
+            genesys_good: currentData.genesysGood,
+            genesys_bad: currentData.genesysBad,
+            fcr: currentData.fcr,
+            good_phone: currentData.goodByChannel.phone,
+            good_chat: currentData.goodByChannel.chat,
+            good_email: currentData.goodByChannel.email,
             user_id: user.id,
           } as any,
           { onConflict: "year,month,user_id" }
