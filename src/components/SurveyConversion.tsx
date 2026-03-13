@@ -34,7 +34,7 @@ const SurveyConversion = ({ userId, selectedMonth, selectedYear }: SurveyConvers
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<{ date: string; calls: number; surveys: number } | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedRef = useRef(false);
 
   // Generate all days of the selected month
