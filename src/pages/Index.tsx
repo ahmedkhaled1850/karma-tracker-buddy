@@ -1116,7 +1116,7 @@ const Index = () => {
   useEffect(() => {
     if (!initialized) return;
     const timeout = setTimeout(() => {
-      if (!isSaving) {
+      if (!savingRef.current) {
         saveToDatabase();
       }
     }, 800);
