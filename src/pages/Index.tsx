@@ -1102,7 +1102,7 @@ const Index = () => {
       if (!isSaving) {
         saveToDatabase();
       }
-    }, 1500);
+    }, 800);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, data, genesysTickets]);
