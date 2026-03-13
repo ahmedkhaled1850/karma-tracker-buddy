@@ -979,19 +979,20 @@ const Index = () => {
 
       if (perfErr || !perfRow) throw perfErr;
 
-      const currentPerformanceId = perfRow.id as string;
-      setPerformanceId(currentPerformanceId);
+      const savedPerformanceId = perfRow.id as string;
+      setPerformanceId(savedPerformanceId);
+      performanceIdRef.current = savedPerformanceId;
 
       // Log incremental daily changes based on the last in-app snapshot (NOT DB totals)
-      const baseline = previousData;
+      const baseline = currentPreviousData;
       if (baseline) {
         const fieldsToTrack = [
-          { field: "good", newVal: data.good, oldVal: baseline.good },
-          { field: "bad", newVal: data.bad, oldVal: baseline.bad },
-          { field: "karma_bad", newVal: data.karmaBad, oldVal: baseline.karmaBad },
-          { field: "genesys_good", newVal: data.genesysGood, oldVal: baseline.genesysGood },
-          { field: "genesys_bad", newVal: data.genesysBad, oldVal: baseline.genesysBad },
-          { field: "fcr", newVal: data.fcr, oldVal: baseline.fcr },
+          { field: "good", newVal: currentData.good, oldVal: baseline.good },
+          { field: "bad", newVal: currentData.bad, oldVal: baseline.bad },
+          { field: "karma_bad", newVal: currentData.karmaBad, oldVal: baseline.karmaBad },
+          { field: "genesys_good", newVal: currentData.genesysGood, oldVal: baseline.genesysGood },
+          { field: "genesys_bad", newVal: currentData.genesysBad, oldVal: baseline.genesysBad },
+          { field: "fcr", newVal: currentData.fcr, oldVal: baseline.fcr },
         ];
 
         const changesForInsert = fieldsToTrack
@@ -1012,7 +1013,7 @@ const Index = () => {
             .padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
 
           const changesToInsert = changesForInsert.map((change) => ({
-            performance_id: currentPerformanceId,
+            performance_id: savedPerformanceId,
             change_date: today,
             change_time: currentTime,
             user_id: user.id,
@@ -1024,7 +1025,7 @@ const Index = () => {
         }
       } else {
         // First save this session: ensure FCR is logged at least once
-        if (data.fcr !== undefined) {
+        if (currentData.fcr !== undefined) {
           const today = new Date().toISOString().split("T")[0];
           const now = new Date();
           const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now
@@ -1033,13 +1034,13 @@ const Index = () => {
             .padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
           const { error: changesError } = await supabase.from("daily_changes").insert([
             {
-              performance_id: currentPerformanceId,
+              performance_id: savedPerformanceId,
               change_date: today,
               change_time: currentTime,
               user_id: user.id,
               field_name: "fcr",
               old_value: null,
-              new_value: data.fcr,
+              new_value: currentData.fcr,
               change_amount: null,
             },
           ]);
@@ -1051,12 +1052,12 @@ const Index = () => {
       const { error: deleteError } = await supabase
         .from("tickets")
         .delete()
-        .eq("performance_id", currentPerformanceId);
+        .eq("performance_id", savedPerformanceId);
       if (deleteError) throw deleteError;
 
-      if (data.tickets.length > 0) {
-        const ticketsToInsert = data.tickets.map((ticket) => ({
-          performance_id: currentPerformanceId,
+      if (currentData.tickets.length > 0) {
+        const ticketsToInsert = currentData.tickets.map((ticket) => ({
+          performance_id: savedPerformanceId,
           ticket_id: ticket.ticketId,
           type: ticket.type,
           channel: ticket.channel,
@@ -1069,11 +1070,11 @@ const Index = () => {
       }
 
       // Replace Genesys tickets for this month
-      await supabase.from("genesys_tickets").delete().eq("performance_id", currentPerformanceId);
+      await supabase.from("genesys_tickets").delete().eq("performance_id", savedPerformanceId);
 
-      if (genesysTickets.length > 0) {
-        const genesysTicketsToInsert = genesysTickets.map((ticket) => ({
-          performance_id: currentPerformanceId,
+      if (currentGenesysTickets.length > 0) {
+        const genesysTicketsToInsert = currentGenesysTickets.map((ticket) => ({
+          performance_id: savedPerformanceId,
           ticket_link: ticket.ticketLink,
           rating_score: ticket.ratingScore,
           customer_phone: ticket.customerPhone,
@@ -1089,7 +1090,8 @@ const Index = () => {
       }
 
       // Snapshot after successful save
-      setPreviousData({ ...data });
+      setPreviousData({ ...currentData });
+      previousDataRef.current = { ...currentData };
       toast.success("Data saved successfully!");
     } catch (error) {
       console.error("Error saving data:", error);
