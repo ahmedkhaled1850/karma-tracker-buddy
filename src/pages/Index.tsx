@@ -1102,7 +1102,7 @@ const Index = () => {
       if (!isSaving) {
         saveToDatabase();
       }
-    }, 1500);
+    }, 800);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, data, genesysTickets]);
@@ -1166,13 +1166,8 @@ const Index = () => {
         };
       });
 
-      setTimeout(() => {
-        if (!isSaving) {
-          saveToDatabase();
-        }
-      }, 0);
     },
-    [isSaving, saveToDatabase]
+    []
   );
 
   const totalGood = useMemo(() => data.good + data.genesysGood, [data.good, data.genesysGood]);
