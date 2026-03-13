@@ -1166,13 +1166,8 @@ const Index = () => {
         };
       });
 
-      setTimeout(() => {
-        if (!isSaving) {
-          saveToDatabase();
-        }
-      }, 0);
     },
-    [isSaving, saveToDatabase]
+    []
   );
 
   const totalGood = useMemo(() => data.good + data.genesysGood, [data.good, data.genesysGood]);
