@@ -84,8 +84,6 @@ const Index = () => {
   const [performanceId, setPerformanceId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
-  const dataRef = useRef(data);
-  const genesysTicketsRef = useRef(genesysTickets);
   const [focusMode, setFocusMode] = useState(false);
   const [celebrationType, setCelebrationType] = useState<"confetti" | "firework" | null>(null);
   const [celebrationTrigger, setCelebrationTrigger] = useState(false);
