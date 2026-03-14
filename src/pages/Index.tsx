@@ -24,7 +24,7 @@ import { DailyNotesSection } from "@/components/DailyNotesSection";
 import { BreakScheduler } from "@/components/BreakScheduler";
 import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
-import SurveyConversion from "@/components/SurveyConversion";
+import CallsSurveyHub from "@/components/CallsSurveyHub";
 import { PhoneBonusKPI } from "@/components/PhoneBonusKPI";
 import { SmartKPITips } from "@/components/SmartKPITips";
 import { StreaksMilestones } from "@/components/StreaksMilestones";
