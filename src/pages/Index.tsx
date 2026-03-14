@@ -24,7 +24,7 @@ import { DailyNotesSection } from "@/components/DailyNotesSection";
 import { BreakScheduler } from "@/components/BreakScheduler";
 import { BestProductiveTime } from "@/components/BestProductiveTime";
 import { MonthEndForecast } from "@/components/MonthEndForecast";
-import SurveyConversion from "@/components/SurveyConversion";
+import CallsSurveyHub from "@/components/CallsSurveyHub";
 import { PhoneBonusKPI } from "@/components/PhoneBonusKPI";
 import { SmartKPITips } from "@/components/SmartKPITips";
 import { StreaksMilestones } from "@/components/StreaksMilestones";
@@ -1608,11 +1608,12 @@ const Index = () => {
               remainingWorkDays={remainingWorkingDays}
             />
 
-            {/* Survey Conversion - Secondary priority, always visible */}
-            <SurveyConversion
+            {/* Calls & Surveys Hub - Merged Productivity KPI + Survey Conversion */}
+            <CallsSurveyHub
               userId={user.id}
               selectedMonth={selectedMonth}
               selectedYear={selectedYear}
+              remainingWorkDays={remainingWorkingDays}
             />
 
             {/* Monitoring Section: Counters as compact row */}
