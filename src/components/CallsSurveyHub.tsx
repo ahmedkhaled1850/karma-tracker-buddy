@@ -126,7 +126,7 @@ const CallsSurveyHub = ({ userId, selectedMonth, selectedYear, remainingWorkDays
     
     const days = remainingWorkDays ?? 1;
     const totalDays = recordedDays + days;
-    const callsNeeded100 = Math.max(0, Math.ceil(30 * totalDays - totalCalls));
+    const callsNeeded100 = Math.max(0, Math.ceil(30 * recordedDays - totalCalls));
     const callsPerDay100 = Math.ceil(callsNeeded100 / Math.max(1, days));
     const callsNeeded75 = Math.max(0, Math.ceil(28 * totalDays - totalCalls));
     const callsPerDay75 = Math.ceil(callsNeeded75 / Math.max(1, days));
