@@ -220,7 +220,7 @@ const CallsSurveyHub = ({ userId, selectedMonth, selectedYear, remainingWorkDays
     return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
   };
 
-  const { avgCalls, score: prodScore, totalCalls: prodTotalCalls, recordedDays, callsPerDay100, days: remDays } = productivityMetrics;
+  const { avgCalls, score: prodScore, totalCalls: prodTotalCalls, recordedDays, callsNeeded100, days: remDays } = productivityMetrics;
 
   return (
     <Card className="p-4 border-border bg-card shadow-sm overflow-hidden">
@@ -335,13 +335,12 @@ const CallsSurveyHub = ({ userId, selectedMonth, selectedYear, remainingWorkDays
           <span>{avgCalls.toFixed(1)} calls/day</span>
           <span>•</span>
           <span>{prodTotalCalls} total / {recordedDays} days</span>
-          {prodScore < 100 && recordedDays > 0 && (
-            <>
-              <span>•</span>
-              <span className="text-primary font-medium">Need {callsPerDay100}/day → 100%</span>
-            </>
-          )}
         </div>
+        {prodScore < 100 && recordedDays > 0 && (
+          <p className="text-xs text-muted-foreground mt-1.5">
+            📈 Need <span className="font-bold text-primary">{callsNeeded100}</span> more calls to reach 100% (30 calls/day)
+          </p>
+        )}
         <div className="flex justify-between text-[10px] text-muted-foreground mt-2">
           <span>{"<26: 0%"}</span>
           <span>26-28: 50%</span>
