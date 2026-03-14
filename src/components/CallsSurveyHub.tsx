@@ -220,7 +220,7 @@ const CallsSurveyHub = ({ userId, selectedMonth, selectedYear, remainingWorkDays
     return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
   };
 
-  const { avgCalls, score: prodScore, totalCalls: prodTotalCalls, recordedDays, callsPerDay100, days: remDays } = productivityMetrics;
+  const { avgCalls, score: prodScore, totalCalls: prodTotalCalls, recordedDays, callsNeeded100, days: remDays } = productivityMetrics;
 
   return (
     <Card className="p-4 border-border bg-card shadow-sm overflow-hidden">
