@@ -1608,11 +1608,12 @@ const Index = () => {
               remainingWorkDays={remainingWorkingDays}
             />
 
-            {/* Survey Conversion - Secondary priority, always visible */}
-            <SurveyConversion
+            {/* Calls & Surveys Hub - Merged Productivity KPI + Survey Conversion */}
+            <CallsSurveyHub
               userId={user.id}
               selectedMonth={selectedMonth}
               selectedYear={selectedYear}
+              remainingWorkDays={remainingWorkingDays}
             />
 
             {/* Monitoring Section: Counters as compact row */}
