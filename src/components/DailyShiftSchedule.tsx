@@ -107,24 +107,37 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
 
     let perfId = performanceId;
     
-    // Create performance_data record if needed
+    // Find or create performance_data record
     if (!perfId) {
       try {
-        const { data: upserted, error } = await supabase
+        const { data: existing } = await supabase
           .from('performance_data')
-          .upsert({
-            year: selectedYear,
-            month: selectedMonth,
-            user_id: user.id,
-            good: 0, bad: 0, karma_bad: 0,
-            genesys_good: 0, genesys_bad: 0,
-            good_phone: 0, good_chat: 0, good_email: 0,
-          }, { onConflict: 'year,month,user_id' })
-          .select()
-          .single();
-        if (error) throw error;
-        perfId = upserted?.id;
-      } catch {
+          .select('id')
+          .eq('year', selectedYear)
+          .eq('month', selectedMonth)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existing) {
+          perfId = existing.id;
+        } else {
+          const { data: inserted, error } = await supabase
+            .from('performance_data')
+            .insert({
+              year: selectedYear,
+              month: selectedMonth,
+              user_id: user.id,
+              good: 0, bad: 0, karma_bad: 0,
+              genesys_good: 0, genesys_bad: 0,
+              good_phone: 0, good_chat: 0, good_email: 0,
+            })
+            .select('id')
+            .single();
+          if (error) throw error;
+          perfId = inserted?.id;
+        }
+      } catch (err) {
+        console.error('Error syncing off days:', err);
         return;
       }
     }
