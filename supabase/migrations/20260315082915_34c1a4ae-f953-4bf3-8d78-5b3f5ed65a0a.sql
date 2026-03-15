@@ -1,0 +1,1 @@
+ALTER TABLE public.performance_data ADD CONSTRAINT performance_data_year_month_user_id_unique UNIQUE (year, month, user_id);
