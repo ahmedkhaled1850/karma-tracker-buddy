@@ -157,6 +157,12 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
 
   const handleSaveShift = async () => {
     if (!editingShift || !user?.id) return;
+
+    if (!editingShift.is_off_day && (!editingShift.shift_start || !editingShift.shift_end)) {
+      toast.error("Please set both Shift Start and Shift End");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const toNull = (v: string | null | undefined) => (v && v.trim() !== '' ? v : null);
@@ -176,17 +182,29 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
         absence_type: editingShift.is_off_day ? (editingShift.absence_type || 'scheduled_off') : null,
       };
 
+      let savedShift: DailyShift;
+
       if (editingShift.id) {
-        const { error } = await supabase.from('daily_shifts').update(shiftData).eq('id', editingShift.id);
+        const { data, error } = await supabase
+          .from('daily_shifts')
+          .update(shiftData)
+          .eq('id', editingShift.id)
+          .select('*')
+          .single();
         if (error) throw error;
+        savedShift = data as DailyShift;
       } else {
-        const { data, error } = await supabase.from('daily_shifts').insert(shiftData).select().single();
+        const { data, error } = await supabase
+          .from('daily_shifts')
+          .insert(shiftData)
+          .select('*')
+          .single();
         if (error) throw error;
-        editingShift.id = data.id;
+        savedShift = data as DailyShift;
       }
 
-      const updatedShifts = shifts.map(s => 
-        s.shift_date === editingShift.shift_date ? { ...editingShift, ...shiftData } : s
+      const updatedShifts = shifts.map(s =>
+        s.shift_date === savedShift.shift_date ? savedShift : s
       );
       setShifts(updatedShifts);
 
