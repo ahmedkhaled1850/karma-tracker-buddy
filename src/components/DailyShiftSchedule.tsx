@@ -146,18 +146,19 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
     if (!editingShift || !user?.id) return;
     setIsSaving(true);
     try {
+      const toNull = (v: string | null | undefined) => (v && v.trim() !== '' ? v : null);
       const shiftData = {
         user_id: user.id,
         shift_date: editingShift.shift_date,
-        shift_start: editingShift.is_off_day ? null : editingShift.shift_start,
-        shift_end: editingShift.is_off_day ? null : editingShift.shift_end,
-        break1_time: editingShift.is_off_day ? null : editingShift.break1_time,
+        shift_start: editingShift.is_off_day ? null : toNull(editingShift.shift_start),
+        shift_end: editingShift.is_off_day ? null : toNull(editingShift.shift_end),
+        break1_time: editingShift.is_off_day ? null : toNull(editingShift.break1_time),
         break1_duration: editingShift.break1_duration || 15,
-        break2_time: editingShift.is_off_day ? null : editingShift.break2_time,
+        break2_time: editingShift.is_off_day ? null : toNull(editingShift.break2_time),
         break2_duration: editingShift.break2_duration || 30,
-        break3_time: editingShift.is_off_day ? null : editingShift.break3_time,
+        break3_time: editingShift.is_off_day ? null : toNull(editingShift.break3_time),
         break3_duration: editingShift.break3_duration || 15,
-        notes: editingShift.notes,
+        notes: toNull(editingShift.notes),
         is_off_day: editingShift.is_off_day,
         absence_type: editingShift.is_off_day ? (editingShift.absence_type || 'scheduled_off') : null,
       };
