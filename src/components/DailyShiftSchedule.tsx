@@ -448,13 +448,13 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Shift Start</Label>
-                      <Input type="time" value={editingShift.shift_start || ''}
-                        onChange={(e) => setEditingShift(prev => prev ? { ...prev, shift_start: e.target.value } : null)} />
+                      <TimeInput24 value={editingShift.shift_start || ''}
+                        onChange={(val) => setEditingShift(prev => prev ? { ...prev, shift_start: val } : null)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Shift End</Label>
-                      <Input type="time" value={editingShift.shift_end || ''}
-                        onChange={(e) => setEditingShift(prev => prev ? { ...prev, shift_end: e.target.value } : null)} />
+                      <TimeInput24 value={editingShift.shift_end || ''}
+                        onChange={(val) => setEditingShift(prev => prev ? { ...prev, shift_end: val } : null)} />
                     </div>
                   </div>
 
