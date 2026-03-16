@@ -468,8 +468,8 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                       <div key={brk.timeKey} className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <Label className="text-xs">{brk.label} Time</Label>
-                          <Input type="time" value={editingShift[brk.timeKey] || ''}
-                            onChange={(e) => setEditingShift(prev => prev ? { ...prev, [brk.timeKey]: e.target.value } : null)} />
+                          <TimeInput24 value={(editingShift[brk.timeKey] as string) || ''}
+                            onChange={(val) => setEditingShift(prev => prev ? { ...prev, [brk.timeKey]: val } : null)} />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Duration (min)</Label>
