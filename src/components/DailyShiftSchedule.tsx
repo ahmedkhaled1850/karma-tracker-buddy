@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getStaticShift, formatTime12H } from "@/lib/staticSchedule";
 import { DailyShift } from "@/lib/types";
+import { TimeInput24 } from "@/components/TimeInput24";
 
 
 interface DailyShiftScheduleProps {
@@ -447,13 +448,13 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Shift Start</Label>
-                      <Input type="time" value={editingShift.shift_start || ''}
-                        onChange={(e) => setEditingShift(prev => prev ? { ...prev, shift_start: e.target.value } : null)} />
+                      <TimeInput24 value={editingShift.shift_start || ''}
+                        onChange={(val) => setEditingShift(prev => prev ? { ...prev, shift_start: val } : null)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Shift End</Label>
-                      <Input type="time" value={editingShift.shift_end || ''}
-                        onChange={(e) => setEditingShift(prev => prev ? { ...prev, shift_end: e.target.value } : null)} />
+                      <TimeInput24 value={editingShift.shift_end || ''}
+                        onChange={(val) => setEditingShift(prev => prev ? { ...prev, shift_end: val } : null)} />
                     </div>
                   </div>
 
@@ -467,8 +468,8 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
                       <div key={brk.timeKey} className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <Label className="text-xs">{brk.label} Time</Label>
-                          <Input type="time" value={editingShift[brk.timeKey] || ''}
-                            onChange={(e) => setEditingShift(prev => prev ? { ...prev, [brk.timeKey]: e.target.value } : null)} />
+                          <TimeInput24 value={(editingShift[brk.timeKey] as string) || ''}
+                            onChange={(val) => setEditingShift(prev => prev ? { ...prev, [brk.timeKey]: val } : null)} />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Duration (min)</Label>
