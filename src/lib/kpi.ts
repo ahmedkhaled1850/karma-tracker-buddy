@@ -40,13 +40,17 @@ export async function fetchMonthlyPayrollData(userId: string, year: number, mont
   const validDays = (callsRes.data || []).filter(r => (r.total_calls || 0) > 0);
   const totalCalls = validDays.reduce((s, r) => s + (r.total_calls || 0), 0);
   const avg = validDays.length > 0 ? totalCalls / validDays.length : 0;
-  const prodScore = avg >= 30 ? 100 : avg >= 28 ? 75 : avg >= 26 ? 50 : 0;
+  const autoProdScore = avg >= 30 ? 100 : avg >= 28 ? 75 : avg >= 26 ? 50 : 0;
 
   const perfData = perfRes.data?.[0];
   let csatScore = 100;
+  let prodScore = autoProdScore;
 
   if (perfData) {
     const pData = perfData as any;
+    if (pData.manual_productivity != null) {
+      prodScore = Math.max(0, Math.min(100, Number(pData.manual_productivity)));
+    }
     const totalGood = (pData.good || 0) + (pData.genesys_good || 0);
     const totalBad = (pData.bad || 0) + (pData.genesys_bad || 0);
     const totalSamples = totalGood + totalBad;
