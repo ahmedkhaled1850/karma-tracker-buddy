@@ -17,6 +17,7 @@ export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: Expected
     taxRate: number | null;
     kpiPercentage: number;
     transportAllowance: number;
+    transportApplied: boolean;
     internetAllowance: number;
     seniorBonus: number;
     languageAllowance: number;
@@ -30,6 +31,7 @@ export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: Expected
     taxRate: null,
     kpiPercentage: 70,
     transportAllowance: 0,
+    transportApplied: true,
     internetAllowance: 0,
     seniorBonus: 0,
     languageAllowance: 0,
