@@ -353,7 +353,8 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
 
   const stats = useMemo(() => {
     const workDays = shifts.filter(s => !s.is_off_day && s.shift_start).length;
-    const offDays = shifts.filter(s => s.is_off_day).length;
+    // Sick leave is excluded from off days count
+    const offDays = shifts.filter(s => s.is_off_day && s.absence_type !== 'sick_leave').length;
     const completed = shifts.filter(s => checkCompleted(s) && !s.is_off_day).length;
     return { workDays, offDays, completed };
   }, [shifts, todayStr]);
