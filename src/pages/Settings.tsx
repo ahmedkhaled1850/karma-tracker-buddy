@@ -143,6 +143,7 @@ export default function Settings() {
         tax_rate: taxRate ? parseFloat(taxRate) : null,
         kpi_percentage: kpiPercentage ? parseFloat(kpiPercentage) : 70,
         transportation_allowance: transportAllowance ? parseFloat(transportAllowance) : 0,
+        transport_applied: transportApplied,
         internet_allowance: internetAllowance ? parseFloat(internetAllowance) : 0,
         senior_bonus: seniorBonus ? parseFloat(seniorBonus) : 0,
         language_allowance: languageAllowance ? parseFloat(languageAllowance) : 0,
