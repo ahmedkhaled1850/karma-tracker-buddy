@@ -270,7 +270,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {avgDailyCalls.toFixed(1)} calls/day ({totalCalls} total / {recordedDays} days)
+                {useManual ? 'Manual entry' : `${avgDailyCalls.toFixed(1)} calls/day (${totalCalls} total / ${recordedDays} days)`}
               </span>
               <span className={`font-bold ${getScoreColor(productivityScore)}`}>
                 {productivityScore}%
