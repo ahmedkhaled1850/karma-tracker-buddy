@@ -40,6 +40,7 @@ export default function Settings() {
   const [taxRate, setTaxRate] = useState<string>("");
   const [kpiPercentage, setKpiPercentage] = useState<string>("70");
   const [transportAllowance, setTransportAllowance] = useState<string>("0");
+  const [transportApplied, setTransportApplied] = useState<boolean>(true);
   const [internetAllowance, setInternetAllowance] = useState<string>("0");
   const [seniorBonus, setSeniorBonus] = useState<string>("0");
   const [languageAllowance, setLanguageAllowance] = useState<string>("0");
@@ -88,7 +89,7 @@ export default function Settings() {
       if (!user?.id) return;
       const { data } = await supabase
         .from('user_settings')
-        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus, language_allowance, salary_payment_day, salary_delay_months, kpi_delay_months, employee_type, start_month')
+        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, transport_applied, internet_allowance, senior_bonus, language_allowance, salary_payment_day, salary_delay_months, kpi_delay_months, employee_type, start_month')
         .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
@@ -97,6 +98,7 @@ export default function Settings() {
         if (d.tax_rate != null) setTaxRate(String(d.tax_rate));
         if (d.kpi_percentage != null) setKpiPercentage(String(d.kpi_percentage));
         if (d.transportation_allowance != null) setTransportAllowance(String(d.transportation_allowance));
+        if (d.transport_applied != null) setTransportApplied(!!d.transport_applied);
         if (d.internet_allowance != null) setInternetAllowance(String(d.internet_allowance));
         if (d.senior_bonus != null) setSeniorBonus(String(d.senior_bonus));
         if (d.language_allowance != null) setLanguageAllowance(String(d.language_allowance));
@@ -141,6 +143,7 @@ export default function Settings() {
         tax_rate: taxRate ? parseFloat(taxRate) : null,
         kpi_percentage: kpiPercentage ? parseFloat(kpiPercentage) : 70,
         transportation_allowance: transportAllowance ? parseFloat(transportAllowance) : 0,
+        transport_applied: transportApplied,
         internet_allowance: internetAllowance ? parseFloat(internetAllowance) : 0,
         senior_bonus: seniorBonus ? parseFloat(seniorBonus) : 0,
         language_allowance: languageAllowance ? parseFloat(languageAllowance) : 0,
@@ -321,9 +324,18 @@ export default function Settings() {
                     <span className="w-1.5 h-1.5 rounded-full bg-success" /> Allowances
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-1">
+                    <div className="space-y-1 col-span-2 sm:col-span-2">
                       <Label className="text-xs flex items-center gap-1"><Bus className="h-3 w-3" /> Transport</Label>
-                      <Input type="number" value={transportAllowance} onChange={(e) => setTransportAllowance(e.target.value)} placeholder="0" step="0.01" min="0" />
+                      <div className="flex items-center gap-2">
+                        <Input type="number" value={transportAllowance} onChange={(e) => setTransportAllowance(e.target.value)} placeholder="0" step="0.01" min="0" disabled={!transportApplied} className="flex-1" />
+                        <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer whitespace-nowrap">
+                          <input type="checkbox" checked={transportApplied} onChange={(e) => setTransportApplied(e.target.checked)} className="cursor-pointer" />
+                          Applied
+                        </label>
+                      </div>
+                      {!transportApplied && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400">Transport not applied — counted as 0 in salary calc</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs flex items-center gap-1"><Wifi className="h-3 w-3" /> Internet</Label>

@@ -33,6 +33,11 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
   const [selectedRepeatDays, setSelectedRepeatDays] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showPastShifts, setShowPastShifts] = useState(false);
+  const [siteRangeOpen, setSiteRangeOpen] = useState(false);
+  const [siteRangeStart, setSiteRangeStart] = useState<string>("");
+  const [siteRangeEnd, setSiteRangeEnd] = useState<string>("");
+  const [siteRangeMode, setSiteRangeMode] = useState<"set" | "unset">("set");
+  const [isApplyingSite, setIsApplyingSite] = useState(false);
 
   const daysInMonth = useMemo(() => {
     const days: string[] = [];
@@ -336,6 +341,57 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
     }
   };
 
+  const handleApplySiteRange = async () => {
+    if (!user?.id || !siteRangeStart || !siteRangeEnd) {
+      toast.error("Pick a start and end date");
+      return;
+    }
+    if (siteRangeStart > siteRangeEnd) {
+      toast.error("Start date must be before end date");
+      return;
+    }
+    setIsApplyingSite(true);
+    try {
+      const targets = shifts.filter(s => s.shift_date >= siteRangeStart && s.shift_date <= siteRangeEnd && !s.is_off_day && s.shift_start);
+      if (targets.length === 0) {
+        toast.error("No working days found in this range");
+        setIsApplyingSite(false);
+        return;
+      }
+      const newValue = siteRangeMode === "set";
+      const updated: DailyShift[] = [];
+      for (const t of targets) {
+        if (t.id) {
+          const { data } = await supabase.from('daily_shifts').update({ is_site_day: newValue }).eq('id', t.id).select('*').single();
+          if (data) updated.push(data as DailyShift);
+        } else {
+          const insertData = {
+            user_id: user.id, shift_date: t.shift_date,
+            shift_start: t.shift_start, shift_end: t.shift_end,
+            break1_time: t.break1_time, break1_duration: t.break1_duration || 15,
+            break2_time: t.break2_time, break2_duration: t.break2_duration || 30,
+            break3_time: t.break3_time, break3_duration: t.break3_duration || 15,
+            notes: t.notes, is_off_day: false, is_site_day: newValue,
+          };
+          const { data } = await supabase.from('daily_shifts').insert(insertData).select('*').single();
+          if (data) updated.push(data as DailyShift);
+        }
+      }
+      const updatedMap = new Map(updated.map(u => [u.shift_date, u]));
+      setShifts(shifts.map(s => updatedMap.get(s.shift_date) || s));
+      toast.success(`${newValue ? 'Marked' : 'Cleared'} site work for ${updated.length} day${updated.length !== 1 ? 's' : ''}`);
+      setSiteRangeOpen(false);
+      setSiteRangeStart("");
+      setSiteRangeEnd("");
+      onShiftChanged?.();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to apply site range");
+    } finally {
+      setIsApplyingSite(false);
+    }
+  };
+
   const getDayName = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
   const getDayNumber = (dateStr: string) => parseInt(dateStr.split('-')[2], 10);
   const checkCompleted = (shift: DailyShift) => {
@@ -353,7 +409,8 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
 
   const stats = useMemo(() => {
     const workDays = shifts.filter(s => !s.is_off_day && s.shift_start).length;
-    const offDays = shifts.filter(s => s.is_off_day).length;
+    // Sick leave is excluded from off days count
+    const offDays = shifts.filter(s => s.is_off_day && s.absence_type !== 'sick_leave').length;
     const completed = shifts.filter(s => checkCompleted(s) && !s.is_off_day).length;
     return { workDays, offDays, completed };
   }, [shifts, todayStr]);
@@ -528,6 +585,14 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
         </div>
         <Button 
           variant="outline" 
+          className="h-[74px] px-3 flex flex-col gap-1 text-[10px] shrink-0 items-center justify-center transition-all hover:bg-indigo-500 hover:text-white border-dashed bg-muted/20 border-indigo-500/30 font-bold uppercase tracking-widest" 
+          onClick={() => { setSiteRangeMode("set"); setSiteRangeOpen(true); }}
+        >
+          <Building className="h-4 w-4 mb-0.5" />
+          <span>Site</span>
+        </Button>
+        <Button 
+          variant="outline" 
           className="h-[74px] px-3 flex flex-col gap-1 text-[10px] shrink-0 items-center justify-center transition-all hover:bg-primary hover:text-white border-dashed bg-muted/20 border-muted-foreground/20 font-bold uppercase tracking-widest" 
           onClick={handleCopySchedule}
         >
@@ -694,6 +759,52 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
             <Button onClick={handleSaveShift} disabled={isSaving}>
               {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Site Range Dialog */}
+      <Dialog open={siteRangeOpen} onOpenChange={setSiteRangeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-indigo-500" />
+              Site Work Range
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Choose a date range to mark all working days as site days (or clear them). This affects the transportation allowance.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">From</Label>
+                <Input type="date" value={siteRangeStart} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                  onChange={(e) => setSiteRangeStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">To</Label>
+                <Input type="date" value={siteRangeEnd} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                  onChange={(e) => setSiteRangeEnd(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Action</Label>
+              <Select value={siteRangeMode} onValueChange={(v) => setSiteRangeMode(v as "set" | "unset")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="set">Mark as Site Days</SelectItem>
+                  <SelectItem value="unset">Clear Site Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSiteRangeOpen(false)}>Cancel</Button>
+            <Button onClick={handleApplySiteRange} disabled={isApplyingSite}>
+              {isApplyingSite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Building className="mr-2 h-4 w-4" />}
+              Apply
             </Button>
           </DialogFooter>
         </DialogContent>

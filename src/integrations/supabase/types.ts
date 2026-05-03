@@ -305,6 +305,7 @@ export type Database = {
           good_phone: number
           id: string
           karma_bad: number
+          manual_productivity: number | null
           month: number
           off_days: number[] | null
           updated_at: string
@@ -323,6 +324,7 @@ export type Database = {
           good_phone?: number
           id?: string
           karma_bad?: number
+          manual_productivity?: number | null
           month: number
           off_days?: number[] | null
           updated_at?: string
@@ -341,6 +343,7 @@ export type Database = {
           good_phone?: number
           id?: string
           karma_bad?: number
+          manual_productivity?: number | null
           month?: number
           off_days?: number[] | null
           updated_at?: string
@@ -460,6 +463,7 @@ export type Database = {
           shift_start_time: string | null
           start_month: string | null
           tax_rate: number | null
+          transport_applied: boolean
           transportation_allowance: number | null
           updated_at: string
           user_id: string
@@ -483,6 +487,7 @@ export type Database = {
           shift_start_time?: string | null
           start_month?: string | null
           tax_rate?: number | null
+          transport_applied?: boolean
           transportation_allowance?: number | null
           updated_at?: string
           user_id: string
@@ -506,6 +511,7 @@ export type Database = {
           shift_start_time?: string | null
           start_month?: string | null
           tax_rate?: number | null
+          transport_applied?: boolean
           transportation_allowance?: number | null
           updated_at?: string
           user_id?: string

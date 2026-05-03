@@ -2,8 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, SmilePlus, CalendarOff, Trophy, DollarSign } from "lucide-react";
+import { toast } from "sonner";
+import { Phone, SmilePlus, CalendarOff, Trophy, DollarSign, Pencil, Save, X } from "lucide-react";
 
 interface PhoneBonusKPIProps {
   userId: string;
@@ -61,6 +66,11 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   const [taxRate, setTaxRate] = useState<number | null>(null);
   const [kpiPercentage, setKpiPercentage] = useState<number>(70);
   const [loading, setLoading] = useState(true);
+  const [perfId, setPerfId] = useState<string | null>(null);
+  const [manualProductivity, setManualProductivity] = useState<number | null>(null);
+  const [useManual, setUseManual] = useState(false);
+  const [manualInput, setManualInput] = useState<string>("");
+  const [editingManual, setEditingManual] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -100,6 +110,28 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
 
         setAbsenceDays(absence);
 
+        // Load manual productivity from performance_data
+        const { data: perfRow } = await supabase
+          .from('performance_data')
+          .select('id, manual_productivity')
+          .eq('user_id', userId)
+          .eq('year', selectedYear)
+          .eq('month', selectedMonth)
+          .maybeSingle();
+        if (perfRow) {
+          setPerfId((perfRow as any).id);
+          const mp = (perfRow as any).manual_productivity;
+          if (mp != null) {
+            setManualProductivity(Number(mp));
+            setUseManual(true);
+            setManualInput(String(mp));
+          } else {
+            setManualProductivity(null);
+            setUseManual(false);
+            setManualInput("");
+          }
+        }
+
         // Load salary settings
         const { data: settings } = await supabase
           .from('user_settings')
@@ -123,7 +155,10 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   }, [userId, selectedMonth, selectedYear]);
 
   const avgDailyCalls = useMemo(() => recordedDays > 0 ? totalCalls / recordedDays : 0, [totalCalls, recordedDays]);
-  const productivityScore = useMemo(() => getProductivityScore(avgDailyCalls), [avgDailyCalls]);
+  const productivityScore = useMemo(() => {
+    if (useManual && manualProductivity != null) return Math.max(0, Math.min(100, manualProductivity));
+    return getProductivityScore(avgDailyCalls);
+  }, [avgDailyCalls, useManual, manualProductivity]);
   const effectiveCsat = useMemo(() => totalSurveys === 0 ? 100 : csatPercentage, [totalSurveys, csatPercentage]);
   const csatScore = useMemo(() => getCsatScore(effectiveCsat), [effectiveCsat]);
   const absenceGate = useMemo(() => getAbsenceGate(absenceDays), [absenceDays]);
@@ -132,6 +167,59 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
     const base = (productivityScore * 0.5) + (csatScore * 0.5);
     return (base * absenceGate) / 100;
   }, [productivityScore, csatScore, absenceGate]);
+
+  const ensurePerfId = async (): Promise<string | null> => {
+    if (perfId) return perfId;
+    const { data: existing } = await supabase
+      .from('performance_data')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('year', selectedYear)
+      .eq('month', selectedMonth)
+      .maybeSingle();
+    if (existing) {
+      setPerfId(existing.id);
+      return existing.id;
+    }
+    const { data: inserted, error } = await supabase
+      .from('performance_data')
+      .insert({ user_id: userId, year: selectedYear, month: selectedMonth, good: 0, bad: 0, karma_bad: 0, genesys_good: 0, genesys_bad: 0, good_phone: 0, good_chat: 0, good_email: 0 })
+      .select('id')
+      .single();
+    if (error) return null;
+    setPerfId(inserted.id);
+    return inserted.id;
+  };
+
+  const saveManualProductivity = async () => {
+    const val = parseFloat(manualInput);
+    if (isNaN(val) || val < 0 || val > 100) {
+      toast.error("Enter a value between 0 and 100");
+      return;
+    }
+    const id = await ensurePerfId();
+    if (!id) { toast.error("Failed to save"); return; }
+    const { error } = await supabase
+      .from('performance_data')
+      .update({ manual_productivity: val } as any)
+      .eq('id', id);
+    if (error) { toast.error("Failed to save"); return; }
+    setManualProductivity(val);
+    setUseManual(true);
+    setEditingManual(false);
+    toast.success("Manual productivity saved");
+  };
+
+  const clearManualProductivity = async () => {
+    const id = await ensurePerfId();
+    if (!id) return;
+    await supabase.from('performance_data').update({ manual_productivity: null } as any).eq('id', id);
+    setManualProductivity(null);
+    setUseManual(false);
+    setManualInput("");
+    setEditingManual(false);
+    toast.success("Reverted to automatic productivity");
+  };
 
   // Broadcast KPI score
   useEffect(() => {
@@ -182,7 +270,7 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {avgDailyCalls.toFixed(1)} calls/day ({totalCalls} total / {recordedDays} days)
+                {useManual ? 'Manual entry' : `${avgDailyCalls.toFixed(1)} calls/day (${totalCalls} total / ${recordedDays} days)`}
               </span>
               <span className={`font-bold ${getScoreColor(productivityScore)}`}>
                 {productivityScore}%
@@ -200,11 +288,56 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             <span>28-30: 75%</span>
             <span>30+: 100%</span>
           </div>
-          {productivityScore < 100 && recordedDays > 0 && (
+          {productivityScore < 100 && recordedDays > 0 && !useManual && (
             <p className="text-xs text-muted-foreground mt-1">
               📈 Need <span className="font-bold text-primary">{Math.ceil((30 * recordedDays) - totalCalls)}</span> more calls to reach 100% (30 calls/day)
             </p>
           )}
+
+          {/* Manual productivity override */}
+          <div className="mt-3 p-3 rounded-lg border border-dashed border-border bg-muted/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label className="text-xs font-semibold">Manual Productivity Override</Label>
+                {useManual && <Badge variant="default" className="text-[9px] h-4">ACTIVE</Badge>}
+              </div>
+              <Switch
+                checked={useManual || editingManual}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setEditingManual(true);
+                    if (manualInput === "" && manualProductivity != null) setManualInput(String(manualProductivity));
+                  } else {
+                    if (useManual) clearManualProductivity();
+                    setEditingManual(false);
+                  }
+                }}
+              />
+            </div>
+            {(editingManual || useManual) && (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number" min={0} max={100} step="0.1"
+                  placeholder="0-100"
+                  value={manualInput}
+                  onChange={(e) => setManualInput(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <Button size="sm" className="h-8" onClick={saveManualProductivity}>
+                  <Save className="h-3.5 w-3.5" />
+                </Button>
+                {useManual && (
+                  <Button size="sm" variant="outline" className="h-8" onClick={clearManualProductivity}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              Type a productivity score (0-100%) for {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} and the KPI will use it instead of the automatic calculation.
+            </p>
+          </div>
         </div>
 
         {/* CSAT (50%) */}
