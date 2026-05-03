@@ -62,7 +62,7 @@ export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: Expected
       try {
         const { data } = await supabase
           .from('user_settings')
-          .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus, language_allowance, salary_payment_day, salary_delay_months, kpi_delay_months, employee_type, start_month')
+          .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, transport_applied, internet_allowance, senior_bonus, language_allowance, salary_payment_day, salary_delay_months, kpi_delay_months, employee_type, start_month')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -73,6 +73,7 @@ export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: Expected
             taxRate: d.tax_rate ?? null,
             kpiPercentage: d.kpi_percentage ?? 70,
             transportAllowance: d.transportation_allowance ?? 0,
+            transportApplied: d.transport_applied ?? true,
             internetAllowance: d.internet_allowance ?? 0,
             seniorBonus: d.senior_bonus ?? 0,
             languageAllowance: d.language_allowance ?? 0,
