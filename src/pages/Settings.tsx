@@ -89,7 +89,7 @@ export default function Settings() {
       if (!user?.id) return;
       const { data } = await supabase
         .from('user_settings')
-        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, internet_allowance, senior_bonus, language_allowance, salary_payment_day, salary_delay_months, kpi_delay_months, employee_type, start_month')
+        .select('base_salary, tax_rate, kpi_percentage, transportation_allowance, transport_applied, internet_allowance, senior_bonus, language_allowance, salary_payment_day, salary_delay_months, kpi_delay_months, employee_type, start_month')
         .eq('user_id', user.id)
         .maybeSingle();
       if (data) {
@@ -98,6 +98,7 @@ export default function Settings() {
         if (d.tax_rate != null) setTaxRate(String(d.tax_rate));
         if (d.kpi_percentage != null) setKpiPercentage(String(d.kpi_percentage));
         if (d.transportation_allowance != null) setTransportAllowance(String(d.transportation_allowance));
+        if (d.transport_applied != null) setTransportApplied(!!d.transport_applied);
         if (d.internet_allowance != null) setInternetAllowance(String(d.internet_allowance));
         if (d.senior_bonus != null) setSeniorBonus(String(d.senior_bonus));
         if (d.language_allowance != null) setLanguageAllowance(String(d.language_allowance));
