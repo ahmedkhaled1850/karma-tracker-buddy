@@ -585,6 +585,14 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
         </div>
         <Button 
           variant="outline" 
+          className="h-[74px] px-3 flex flex-col gap-1 text-[10px] shrink-0 items-center justify-center transition-all hover:bg-indigo-500 hover:text-white border-dashed bg-muted/20 border-indigo-500/30 font-bold uppercase tracking-widest" 
+          onClick={() => { setSiteRangeMode("set"); setSiteRangeOpen(true); }}
+        >
+          <Building className="h-4 w-4 mb-0.5" />
+          <span>Site</span>
+        </Button>
+        <Button 
+          variant="outline" 
           className="h-[74px] px-3 flex flex-col gap-1 text-[10px] shrink-0 items-center justify-center transition-all hover:bg-primary hover:text-white border-dashed bg-muted/20 border-muted-foreground/20 font-bold uppercase tracking-widest" 
           onClick={handleCopySchedule}
         >
