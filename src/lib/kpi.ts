@@ -25,7 +25,7 @@ export async function fetchMonthlyPayrollData(userId: string, year: number, mont
       .lte('call_date', endDate),
     supabase
       .from('performance_data')
-      .select('good, bad, genesys_good, genesys_bad')
+      .select('good, bad, genesys_good, genesys_bad, manual_productivity')
       .eq('user_id', userId)
       .eq('year', year)
       .eq('month', month),
