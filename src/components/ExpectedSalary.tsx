@@ -116,8 +116,8 @@ export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: Expected
     const kpiPool = base * (settings.kpiPercentage / 100);
     const kpiBonus = kpiPool * (kpiScore / 100);
     
-    const transportMonthly = settings.transportAllowance;
-    const transport = workDays > 0 ? (transportMonthly / workDays) * siteDays : 0;
+    const transportMonthly = settings.transportApplied ? settings.transportAllowance : 0;
+    const transport = (settings.transportApplied && workDays > 0) ? (transportMonthly / workDays) * siteDays : 0;
     
     const internet = settings.internetAllowance;
     const senior = settings.seniorBonus;
