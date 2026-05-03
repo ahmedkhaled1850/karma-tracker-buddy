@@ -341,6 +341,57 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
     }
   };
 
+  const handleApplySiteRange = async () => {
+    if (!user?.id || !siteRangeStart || !siteRangeEnd) {
+      toast.error("Pick a start and end date");
+      return;
+    }
+    if (siteRangeStart > siteRangeEnd) {
+      toast.error("Start date must be before end date");
+      return;
+    }
+    setIsApplyingSite(true);
+    try {
+      const targets = shifts.filter(s => s.shift_date >= siteRangeStart && s.shift_date <= siteRangeEnd && !s.is_off_day && s.shift_start);
+      if (targets.length === 0) {
+        toast.error("No working days found in this range");
+        setIsApplyingSite(false);
+        return;
+      }
+      const newValue = siteRangeMode === "set";
+      const updated: DailyShift[] = [];
+      for (const t of targets) {
+        if (t.id) {
+          const { data } = await supabase.from('daily_shifts').update({ is_site_day: newValue }).eq('id', t.id).select('*').single();
+          if (data) updated.push(data as DailyShift);
+        } else {
+          const insertData = {
+            user_id: user.id, shift_date: t.shift_date,
+            shift_start: t.shift_start, shift_end: t.shift_end,
+            break1_time: t.break1_time, break1_duration: t.break1_duration || 15,
+            break2_time: t.break2_time, break2_duration: t.break2_duration || 30,
+            break3_time: t.break3_time, break3_duration: t.break3_duration || 15,
+            notes: t.notes, is_off_day: false, is_site_day: newValue,
+          };
+          const { data } = await supabase.from('daily_shifts').insert(insertData).select('*').single();
+          if (data) updated.push(data as DailyShift);
+        }
+      }
+      const updatedMap = new Map(updated.map(u => [u.shift_date, u]));
+      setShifts(shifts.map(s => updatedMap.get(s.shift_date) || s));
+      toast.success(`${newValue ? 'Marked' : 'Cleared'} site work for ${updated.length} day${updated.length !== 1 ? 's' : ''}`);
+      setSiteRangeOpen(false);
+      setSiteRangeStart("");
+      setSiteRangeEnd("");
+      onShiftChanged?.();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to apply site range");
+    } finally {
+      setIsApplyingSite(false);
+    }
+  };
+
   const getDayName = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
   const getDayNumber = (dateStr: string) => parseInt(dateStr.split('-')[2], 10);
   const checkCompleted = (shift: DailyShift) => {
