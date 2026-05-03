@@ -288,11 +288,56 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
             <span>28-30: 75%</span>
             <span>30+: 100%</span>
           </div>
-          {productivityScore < 100 && recordedDays > 0 && (
+          {productivityScore < 100 && recordedDays > 0 && !useManual && (
             <p className="text-xs text-muted-foreground mt-1">
               📈 Need <span className="font-bold text-primary">{Math.ceil((30 * recordedDays) - totalCalls)}</span> more calls to reach 100% (30 calls/day)
             </p>
           )}
+
+          {/* Manual productivity override */}
+          <div className="mt-3 p-3 rounded-lg border border-dashed border-border bg-muted/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label className="text-xs font-semibold">Manual Productivity Override</Label>
+                {useManual && <Badge variant="default" className="text-[9px] h-4">ACTIVE</Badge>}
+              </div>
+              <Switch
+                checked={useManual || editingManual}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setEditingManual(true);
+                    if (manualInput === "" && manualProductivity != null) setManualInput(String(manualProductivity));
+                  } else {
+                    if (useManual) clearManualProductivity();
+                    setEditingManual(false);
+                  }
+                }}
+              />
+            </div>
+            {(editingManual || useManual) && (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number" min={0} max={100} step="0.1"
+                  placeholder="0-100"
+                  value={manualInput}
+                  onChange={(e) => setManualInput(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <Button size="sm" className="h-8" onClick={saveManualProductivity}>
+                  <Save className="h-3.5 w-3.5" />
+                </Button>
+                {useManual && (
+                  <Button size="sm" variant="outline" className="h-8" onClick={clearManualProductivity}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              Type a productivity score (0-100%) for {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} and the KPI will use it instead of the automatic calculation.
+            </p>
+          </div>
         </div>
 
         {/* CSAT (50%) */}
