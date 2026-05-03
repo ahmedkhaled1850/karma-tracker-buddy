@@ -66,6 +66,11 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   const [taxRate, setTaxRate] = useState<number | null>(null);
   const [kpiPercentage, setKpiPercentage] = useState<number>(70);
   const [loading, setLoading] = useState(true);
+  const [perfId, setPerfId] = useState<string | null>(null);
+  const [manualProductivity, setManualProductivity] = useState<number | null>(null);
+  const [useManual, setUseManual] = useState(false);
+  const [manualInput, setManualInput] = useState<string>("");
+  const [editingManual, setEditingManual] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
