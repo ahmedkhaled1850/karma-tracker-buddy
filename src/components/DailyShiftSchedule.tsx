@@ -763,6 +763,52 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Site Range Dialog */}
+      <Dialog open={siteRangeOpen} onOpenChange={setSiteRangeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-indigo-500" />
+              Site Work Range
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Choose a date range to mark all working days as site days (or clear them). This affects the transportation allowance.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">From</Label>
+                <Input type="date" value={siteRangeStart} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                  onChange={(e) => setSiteRangeStart(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">To</Label>
+                <Input type="date" value={siteRangeEnd} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                  onChange={(e) => setSiteRangeEnd(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Action</Label>
+              <Select value={siteRangeMode} onValueChange={(v) => setSiteRangeMode(v as "set" | "unset")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="set">Mark as Site Days</SelectItem>
+                  <SelectItem value="unset">Clear Site Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSiteRangeOpen(false)}>Cancel</Button>
+            <Button onClick={handleApplySiteRange} disabled={isApplyingSite}>
+              {isApplyingSite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Building className="mr-2 h-4 w-4" />}
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
