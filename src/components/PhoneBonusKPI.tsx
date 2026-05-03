@@ -155,7 +155,10 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
   }, [userId, selectedMonth, selectedYear]);
 
   const avgDailyCalls = useMemo(() => recordedDays > 0 ? totalCalls / recordedDays : 0, [totalCalls, recordedDays]);
-  const productivityScore = useMemo(() => getProductivityScore(avgDailyCalls), [avgDailyCalls]);
+  const productivityScore = useMemo(() => {
+    if (useManual && manualProductivity != null) return Math.max(0, Math.min(100, manualProductivity));
+    return getProductivityScore(avgDailyCalls);
+  }, [avgDailyCalls, useManual, manualProductivity]);
   const effectiveCsat = useMemo(() => totalSurveys === 0 ? 100 : csatPercentage, [totalSurveys, csatPercentage]);
   const csatScore = useMemo(() => getCsatScore(effectiveCsat), [effectiveCsat]);
   const absenceGate = useMemo(() => getAbsenceGate(absenceDays), [absenceDays]);
@@ -164,6 +167,59 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
     const base = (productivityScore * 0.5) + (csatScore * 0.5);
     return (base * absenceGate) / 100;
   }, [productivityScore, csatScore, absenceGate]);
+
+  const ensurePerfId = async (): Promise<string | null> => {
+    if (perfId) return perfId;
+    const { data: existing } = await supabase
+      .from('performance_data')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('year', selectedYear)
+      .eq('month', selectedMonth)
+      .maybeSingle();
+    if (existing) {
+      setPerfId(existing.id);
+      return existing.id;
+    }
+    const { data: inserted, error } = await supabase
+      .from('performance_data')
+      .insert({ user_id: userId, year: selectedYear, month: selectedMonth, good: 0, bad: 0, karma_bad: 0, genesys_good: 0, genesys_bad: 0, good_phone: 0, good_chat: 0, good_email: 0 })
+      .select('id')
+      .single();
+    if (error) return null;
+    setPerfId(inserted.id);
+    return inserted.id;
+  };
+
+  const saveManualProductivity = async () => {
+    const val = parseFloat(manualInput);
+    if (isNaN(val) || val < 0 || val > 100) {
+      toast.error("Enter a value between 0 and 100");
+      return;
+    }
+    const id = await ensurePerfId();
+    if (!id) { toast.error("Failed to save"); return; }
+    const { error } = await supabase
+      .from('performance_data')
+      .update({ manual_productivity: val } as any)
+      .eq('id', id);
+    if (error) { toast.error("Failed to save"); return; }
+    setManualProductivity(val);
+    setUseManual(true);
+    setEditingManual(false);
+    toast.success("Manual productivity saved");
+  };
+
+  const clearManualProductivity = async () => {
+    const id = await ensurePerfId();
+    if (!id) return;
+    await supabase.from('performance_data').update({ manual_productivity: null } as any).eq('id', id);
+    setManualProductivity(null);
+    setUseManual(false);
+    setManualInput("");
+    setEditingManual(false);
+    toast.success("Reverted to automatic productivity");
+  };
 
   // Broadcast KPI score
   useEffect(() => {
