@@ -324,9 +324,18 @@ export default function Settings() {
                     <span className="w-1.5 h-1.5 rounded-full bg-success" /> Allowances
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-1">
+                    <div className="space-y-1 col-span-2 sm:col-span-2">
                       <Label className="text-xs flex items-center gap-1"><Bus className="h-3 w-3" /> Transport</Label>
-                      <Input type="number" value={transportAllowance} onChange={(e) => setTransportAllowance(e.target.value)} placeholder="0" step="0.01" min="0" />
+                      <div className="flex items-center gap-2">
+                        <Input type="number" value={transportAllowance} onChange={(e) => setTransportAllowance(e.target.value)} placeholder="0" step="0.01" min="0" disabled={!transportApplied} className="flex-1" />
+                        <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer whitespace-nowrap">
+                          <input type="checkbox" checked={transportApplied} onChange={(e) => setTransportApplied(e.target.checked)} className="cursor-pointer" />
+                          Applied
+                        </label>
+                      </div>
+                      {!transportApplied && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400">Transport not applied — counted as 0 in salary calc</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs flex items-center gap-1"><Wifi className="h-3 w-3" /> Internet</Label>
