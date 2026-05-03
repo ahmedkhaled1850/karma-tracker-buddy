@@ -40,6 +40,7 @@ export default function Settings() {
   const [taxRate, setTaxRate] = useState<string>("");
   const [kpiPercentage, setKpiPercentage] = useState<string>("70");
   const [transportAllowance, setTransportAllowance] = useState<string>("0");
+  const [transportApplied, setTransportApplied] = useState<boolean>(true);
   const [internetAllowance, setInternetAllowance] = useState<string>("0");
   const [seniorBonus, setSeniorBonus] = useState<string>("0");
   const [languageAllowance, setLanguageAllowance] = useState<string>("0");
