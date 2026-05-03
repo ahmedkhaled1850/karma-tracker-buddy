@@ -481,6 +481,7 @@ export type Database = {
           salary_payment_day?: number | null
           senior_bonus?: number | null
           shift_start_time?: string | null
+          start_month?: string | null
           tax_rate?: number | null
           transportation_allowance?: number | null
           updated_at?: string
