@@ -110,6 +110,28 @@ export const PhoneBonusKPI = ({ userId, selectedMonth, selectedYear, csatPercent
 
         setAbsenceDays(absence);
 
+        // Load manual productivity from performance_data
+        const { data: perfRow } = await supabase
+          .from('performance_data')
+          .select('id, manual_productivity')
+          .eq('user_id', userId)
+          .eq('year', selectedYear)
+          .eq('month', selectedMonth)
+          .maybeSingle();
+        if (perfRow) {
+          setPerfId((perfRow as any).id);
+          const mp = (perfRow as any).manual_productivity;
+          if (mp != null) {
+            setManualProductivity(Number(mp));
+            setUseManual(true);
+            setManualInput(String(mp));
+          } else {
+            setManualProductivity(null);
+            setUseManual(false);
+            setManualInput("");
+          }
+        }
+
         // Load salary settings
         const { data: settings } = await supabase
           .from('user_settings')
