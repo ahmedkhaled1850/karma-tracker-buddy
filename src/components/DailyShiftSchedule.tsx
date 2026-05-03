@@ -33,6 +33,11 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
   const [selectedRepeatDays, setSelectedRepeatDays] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showPastShifts, setShowPastShifts] = useState(false);
+  const [siteRangeOpen, setSiteRangeOpen] = useState(false);
+  const [siteRangeStart, setSiteRangeStart] = useState<string>("");
+  const [siteRangeEnd, setSiteRangeEnd] = useState<string>("");
+  const [siteRangeMode, setSiteRangeMode] = useState<"set" | "unset">("set");
+  const [isApplyingSite, setIsApplyingSite] = useState(false);
 
   const daysInMonth = useMemo(() => {
     const days: string[] = [];
