@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award, Languages, Gift, CalendarOff, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award, Languages, Gift, CalendarOff, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { getLoyaltyBonusForMonth, getNextLoyaltyBonus } from "@/lib/loyalty";
 import { fetchMonthlyPayrollData } from "@/lib/kpi";
+import { Button } from "@/components/ui/button";
 
 interface ExpectedSalaryProps {
   userId: string;
@@ -11,7 +12,20 @@ interface ExpectedSalaryProps {
   selectedYear: number;
 }
 
-export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: ExpectedSalaryProps) => {
+export const ExpectedSalary = ({ userId, selectedMonth: propMonth, selectedYear: propYear }: ExpectedSalaryProps) => {
+  const [selectedMonth, setSelectedMonth] = useState(propMonth);
+  const [selectedYear, setSelectedYear] = useState(propYear);
+  useEffect(() => { setSelectedMonth(propMonth); setSelectedYear(propYear); }, [propMonth, propYear]);
+
+  const goPrev = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
+    else setSelectedMonth(m => m - 1);
+  };
+  const goNext = () => {
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
+    else setSelectedMonth(m => m + 1);
+  };
+  const viewLabel = new Date(selectedYear, selectedMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const [settings, setSettings] = useState<{
     baseSalary: number | null;
     taxRate: number | null;
@@ -107,7 +121,7 @@ export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: Expected
       }
     };
     load();
-  }, [userId]);
+  }, [userId, selectedMonth, selectedYear]);
 
   const salary = useMemo(() => {
     if (settings.baseSalary == null) return null;
@@ -195,7 +209,16 @@ export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: Expected
         <CardTitle className="text-lg font-bold">
           <div className="flex items-center gap-2 mb-3">
             <Wallet className="h-5 w-5 text-primary" />
-            Expected Salary
+            <span>Expected Salary</span>
+            <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={goPrev} className="h-7 w-7 rounded-lg">
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs font-semibold min-w-[90px] text-center">{viewLabel}</span>
+              <Button variant="ghost" size="icon" onClick={goNext} className="h-7 w-7 rounded-lg">
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           <div className="text-sm font-normal text-muted-foreground bg-indigo-500/5 p-3 rounded-md border border-indigo-500/20 leading-relaxed">
             <p>
