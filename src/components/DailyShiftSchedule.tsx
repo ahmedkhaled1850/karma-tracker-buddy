@@ -352,13 +352,55 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
     }
     setIsApplyingSite(true);
     try {
-      const targets = shifts.filter(s => s.shift_date >= siteRangeStart && s.shift_date <= siteRangeEnd && !s.is_off_day && s.shift_start);
+      const newValue = siteRangeMode === "set";
+
+      // Load existing shifts in range across any month/year
+      const { data: existing, error: loadErr } = await supabase
+        .from('daily_shifts')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('shift_date', siteRangeStart)
+        .lte('shift_date', siteRangeEnd);
+      if (loadErr) throw loadErr;
+
+      const existingMap = new Map((existing || []).map((s: any) => [s.shift_date, s as DailyShift]));
+
+      // Build the full date range
+      const allDates: string[] = [];
+      const cursor = new Date(siteRangeStart + 'T00:00:00');
+      const end = new Date(siteRangeEnd + 'T00:00:00');
+      while (cursor <= end) {
+        allDates.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      // Targets = working days only (exclude off days and absences). For dates without a row, fall back to static schedule.
+      const targets: DailyShift[] = [];
+      for (const date of allDates) {
+        const row = existingMap.get(date);
+        if (row) {
+          if (!row.is_off_day && !row.absence_type && row.shift_start) targets.push(row);
+        } else {
+          const s = getStaticShift(date);
+          if (s && !s.is_off_day && s.shift_start) {
+            targets.push({
+              user_id: user.id, shift_date: date,
+              shift_start: s.shift_start || null, shift_end: s.shift_end || null,
+              break1_time: s.break1_time || null, break1_duration: s.break1_duration || 15,
+              break2_time: s.break2_time || null, break2_duration: s.break2_duration || 30,
+              break3_time: s.break3_time || null, break3_duration: s.break3_duration || 15,
+              notes: s.notes || null, is_off_day: false, is_site_day: false,
+            });
+          }
+        }
+      }
+
       if (targets.length === 0) {
         toast.error("No working days found in this range");
         setIsApplyingSite(false);
         return;
       }
-      const newValue = siteRangeMode === "set";
+
       const updated: DailyShift[] = [];
       for (const t of targets) {
         if (t.id) {
@@ -377,6 +419,8 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
           if (data) updated.push(data as DailyShift);
         }
       }
+
+      // Refresh visible shifts for the currently selected month
       const updatedMap = new Map(updated.map(u => [u.shift_date, u]));
       setShifts(shifts.map(s => updatedMap.get(s.shift_date) || s));
       toast.success(`${newValue ? 'Marked' : 'Cleared'} site work for ${updated.length} day${updated.length !== 1 ? 's' : ''}`);
@@ -775,17 +819,17 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Choose a date range to mark all working days as site days (or clear them). This affects the transportation allowance.
+              Choose any date range (across months/years) to mark working days as site days. Off days and leave are skipped automatically. This affects the transportation allowance.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">From</Label>
-                <Input type="date" value={siteRangeStart} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                <Input type="date" value={siteRangeStart}
                   onChange={(e) => setSiteRangeStart(e.target.value)} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">To</Label>
-                <Input type="date" value={siteRangeEnd} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                <Input type="date" value={siteRangeEnd}
                   onChange={(e) => setSiteRangeEnd(e.target.value)} />
               </div>
             </div>
