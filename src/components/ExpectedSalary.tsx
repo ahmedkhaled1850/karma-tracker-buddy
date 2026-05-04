@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award, Languages, Gift, CalendarOff, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, Wallet, Bus, Wifi, Award, Languages, Gift, CalendarOff, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { getLoyaltyBonusForMonth, getNextLoyaltyBonus } from "@/lib/loyalty";
 import { fetchMonthlyPayrollData } from "@/lib/kpi";
+import { Button } from "@/components/ui/button";
 
 interface ExpectedSalaryProps {
   userId: string;
