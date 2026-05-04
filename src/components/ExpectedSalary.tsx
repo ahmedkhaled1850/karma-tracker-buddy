@@ -12,7 +12,20 @@ interface ExpectedSalaryProps {
   selectedYear: number;
 }
 
-export const ExpectedSalary = ({ userId, selectedMonth, selectedYear }: ExpectedSalaryProps) => {
+export const ExpectedSalary = ({ userId, selectedMonth: propMonth, selectedYear: propYear }: ExpectedSalaryProps) => {
+  const [selectedMonth, setSelectedMonth] = useState(propMonth);
+  const [selectedYear, setSelectedYear] = useState(propYear);
+  useEffect(() => { setSelectedMonth(propMonth); setSelectedYear(propYear); }, [propMonth, propYear]);
+
+  const goPrev = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
+    else setSelectedMonth(m => m - 1);
+  };
+  const goNext = () => {
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
+    else setSelectedMonth(m => m + 1);
+  };
+  const viewLabel = new Date(selectedYear, selectedMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const [settings, setSettings] = useState<{
     baseSalary: number | null;
     taxRate: number | null;
