@@ -819,17 +819,17 @@ export const DailyShiftSchedule = ({ selectedMonth, selectedYear, performanceId,
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Choose a date range to mark all working days as site days (or clear them). This affects the transportation allowance.
+              Choose any date range (across months/years) to mark working days as site days. Off days and leave are skipped automatically. This affects the transportation allowance.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">From</Label>
-                <Input type="date" value={siteRangeStart} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                <Input type="date" value={siteRangeStart}
                   onChange={(e) => setSiteRangeStart(e.target.value)} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">To</Label>
-                <Input type="date" value={siteRangeEnd} min={daysInMonth[0]} max={daysInMonth[daysInMonth.length - 1]}
+                <Input type="date" value={siteRangeEnd}
                   onChange={(e) => setSiteRangeEnd(e.target.value)} />
               </div>
             </div>
