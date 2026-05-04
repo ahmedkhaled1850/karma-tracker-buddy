@@ -209,7 +209,16 @@ export const ExpectedSalary = ({ userId, selectedMonth: propMonth, selectedYear:
         <CardTitle className="text-lg font-bold">
           <div className="flex items-center gap-2 mb-3">
             <Wallet className="h-5 w-5 text-primary" />
-            Expected Salary
+            <span>Expected Salary</span>
+            <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={goPrev} className="h-7 w-7 rounded-lg">
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs font-semibold min-w-[90px] text-center">{viewLabel}</span>
+              <Button variant="ghost" size="icon" onClick={goNext} className="h-7 w-7 rounded-lg">
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           <div className="text-sm font-normal text-muted-foreground bg-indigo-500/5 p-3 rounded-md border border-indigo-500/20 leading-relaxed">
             <p>
