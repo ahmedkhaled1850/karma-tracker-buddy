@@ -121,7 +121,7 @@ export const ExpectedSalary = ({ userId, selectedMonth: propMonth, selectedYear:
       }
     };
     load();
-  }, [userId]);
+  }, [userId, selectedMonth, selectedYear]);
 
   const salary = useMemo(() => {
     if (settings.baseSalary == null) return null;
