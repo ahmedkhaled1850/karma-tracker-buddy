@@ -176,11 +176,11 @@ export const ExpectedSalary = ({ userId, selectedMonth: propMonth, selectedYear:
   }, [selectedYear, selectedMonth, settings.salaryPaymentDay]);
 
   const sourceMonths = useMemo(() => {
-    const varDate = new Date(selectedYear, selectedMonth - 1, 1);
-    const label = varDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const kpiDate = new Date(selectedYear, selectedMonth - 1, 1);
+    const currentLabel = new Date(selectedYear, selectedMonth, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     return {
-      kpi: label,
-      transport: label,
+      kpi: kpiDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      transport: currentLabel,
     };
   }, [selectedYear, selectedMonth]);
 
