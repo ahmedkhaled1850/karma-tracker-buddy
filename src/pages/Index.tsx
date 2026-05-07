@@ -30,6 +30,7 @@ import { PhoneBonusKPI } from "@/components/PhoneBonusKPI";
 import { SmartKPITips } from "@/components/SmartKPITips";
 import { StreaksMilestones } from "@/components/StreaksMilestones";
 import { DailyKPITarget } from "@/components/DailyKPITarget";
+import { ManualProductivityCard } from "@/components/ManualProductivityCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ThreeMonthPerformance, MonthMetrics } from "@/components/ThreeMonthPerformance";
@@ -1598,6 +1599,13 @@ const Index = () => {
               totalSurveys={totalSurveys}
               remainingWorkDays={remainingWorkingDays}
               kpiScore={kpiScore}
+            />
+
+            {/* Manual Productivity Override */}
+            <ManualProductivityCard
+              userId={user.id}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
             />
 
             {/* Smart Tips */}
