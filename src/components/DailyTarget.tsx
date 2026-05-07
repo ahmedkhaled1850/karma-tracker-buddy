@@ -70,7 +70,7 @@ export const DailyTarget = ({
     const levels: LevelTarget[] = [
       { level: 1, percentage: 88, label: "Level 1", icon: <Target className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
       { level: 2, percentage: 90, label: "Level 2", icon: <Star className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
-      { level: 3, percentage: 95, label: "Expert", icon: <Trophy className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
+      { level: 3, percentage: 92, label: "Expert", icon: <Trophy className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
     ];
     
     levels.forEach((level) => {
