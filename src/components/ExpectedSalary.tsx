@@ -97,21 +97,24 @@ export const ExpectedSalary = ({ userId, selectedMonth: propMonth, selectedYear:
             employeeType: d.employee_type ?? null,
             startMonth: d.start_month ?? null,
           });
-          // KPI and Transport target month is strictly 1 month prior to the "Work Month"
-          const varDate = new Date(selectedYear, selectedMonth - 1, 1);
-          const varData = await fetchMonthlyPayrollData(userId, varDate.getFullYear(), varDate.getMonth());
-          
-          setKpiScore(varData.kpiScore);
-          setWorkDays(varData.workDays);
-          setSiteDays(varData.siteDays);
-          
-          setCasualCount(varData.casualCount);
-          setNoShowCount(varData.noShowCount);
+          // KPI is from 1 month prior; Transport/Absence/OT are from the SAME displayed month
+          const kpiDate = new Date(selectedYear, selectedMonth - 1, 1);
+          const [kpiData, currentData] = await Promise.all([
+            fetchMonthlyPayrollData(userId, kpiDate.getFullYear(), kpiDate.getMonth()),
+            fetchMonthlyPayrollData(userId, selectedYear, selectedMonth),
+          ]);
+
+          setKpiScore(kpiData.kpiScore);
+          setWorkDays(currentData.workDays);
+          setSiteDays(currentData.siteDays);
+
+          setCasualCount(currentData.casualCount);
+          setNoShowCount(currentData.noShowCount);
 
           setOtData({
-            day: varData.otDay,
-            night: varData.otNight,
-            special: varData.otSpecial
+            day: currentData.otDay,
+            night: currentData.otNight,
+            special: currentData.otSpecial
           });
         }
       } catch (err) {
@@ -173,11 +176,11 @@ export const ExpectedSalary = ({ userId, selectedMonth: propMonth, selectedYear:
   }, [selectedYear, selectedMonth, settings.salaryPaymentDay]);
 
   const sourceMonths = useMemo(() => {
-    const varDate = new Date(selectedYear, selectedMonth - 1, 1);
-    const label = varDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const kpiDate = new Date(selectedYear, selectedMonth - 1, 1);
+    const currentLabel = new Date(selectedYear, selectedMonth, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     return {
-      kpi: label,
-      transport: label,
+      kpi: kpiDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      transport: currentLabel,
     };
   }, [selectedYear, selectedMonth]);
 
