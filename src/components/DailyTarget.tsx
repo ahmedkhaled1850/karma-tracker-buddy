@@ -66,11 +66,11 @@ export const DailyTarget = ({
     const totalKarmaBase = currentGood + totalNegatives + karmaBad;
     const currentKarma = totalKarmaBase > 0 ? (currentGood / totalKarmaBase) * 100 : 0;
     
-    // Calculate for each level (88%, 90%, 95%)
+    // Calculate for each level (88%, 90%, 92%)
     const levels: LevelTarget[] = [
       { level: 1, percentage: 88, label: "Level 1", icon: <Target className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
       { level: 2, percentage: 90, label: "Level 2", icon: <Star className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
-      { level: 3, percentage: 95, label: "Expert", icon: <Trophy className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
+      { level: 3, percentage: 92, label: "Expert", icon: <Trophy className="h-4 w-4" />, needed: 0, dailyTarget: 0 },
     ];
     
     levels.forEach((level) => {
@@ -84,7 +84,7 @@ export const DailyTarget = ({
     
     // Find current level
     let currentLevel = 0;
-    if (currentKarma >= 95) currentLevel = 3;
+    if (currentKarma >= 92) currentLevel = 3;
     else if (currentKarma >= 90) currentLevel = 2;
     else if (currentKarma >= 88) currentLevel = 1;
     
@@ -142,7 +142,7 @@ export const DailyTarget = ({
     if (currentGood >= 50) list.push({ label: "Bronze 50" });
     if (currentGood >= 100) list.push({ label: "Silver 100" });
     if (currentGood >= 200) list.push({ label: "Gold 200" });
-    if (calculations.currentKarma >= 95) list.push({ label: "Expert 95%" });
+    if (calculations.currentKarma >= 92) list.push({ label: "Expert 92%" });
     return list;
   }, [currentGood, calculations]);
 
