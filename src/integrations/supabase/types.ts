@@ -189,6 +189,45 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_sync: {
+        Row: {
+          agent_email: string
+          created_at: string | null
+          csat_count: number
+          csat_percentage: number | null
+          dsat_count: number
+          id: string
+          month: number
+          synced_at: string | null
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          agent_email: string
+          created_at?: string | null
+          csat_count?: number
+          csat_percentage?: number | null
+          dsat_count?: number
+          id?: string
+          month: number
+          synced_at?: string | null
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          agent_email?: string
+          created_at?: string | null
+          csat_count?: number
+          csat_percentage?: number | null
+          dsat_count?: number
+          id?: string
+          month?: number
+          synced_at?: string | null
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       genesys_tickets: {
         Row: {
           channel: string | null
